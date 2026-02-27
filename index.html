@@ -6,11 +6,7 @@
     <title>BLOCO DE ANOTAÇÕES (DESPESAS E CONTAS)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body {
-            background-color: #f3f4f6;
-            font-family: 'Inter', sans-serif;
-        }
-
+        body { background-color: #f3f4f6; font-family: 'Inter', sans-serif; }
         .notebook-page {
             background: white;
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
@@ -20,18 +16,8 @@
             flex-direction: column;
             border: 1px solid #d1d5db;
         }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            table-layout: fixed;
-        }
-
-        th, td {
-            border: 1px solid #e5e7eb;
-            padding: 0;
-        }
-
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        th, td { border: 1px solid #e5e7eb; padding: 0; }
         th {
             background-color: #f9fafb;
             text-align: left;
@@ -41,7 +27,6 @@
             color: #4b5563;
             border-bottom: 2px solid #d1d5db;
         }
-
         input {
             background: transparent;
             border: none;
@@ -50,31 +35,22 @@
             width: 100%;
             display: block;
         }
-
-        input:focus {
-            background-color: #eff6ff;
-        }
-
-        .total-footer {
-            border-top: 3px double #374151;
-            background: #f9fafb;
-        }
-
-        .delete-col {
-            width: 50px;
-            text-align: center;
-        }
-
-        .value-col {
-            width: 150px;
-        }
+        input:focus { background-color: #eff6ff; }
+        .total-footer { border-top: 3px double #374151; background: #f9fafb; }
+        .delete-col { width: 50px; text-align: center; }
+        .value-col { width: 150px; }
+        .btn-save { transition: all 0.2s; }
+        .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
     </style>
 </head>
 <body class="p-4 md:p-10 text-gray-800">
 
     <div class="max-w-4xl mx-auto notebook-page">
-        <div class="p-6 border-b border-gray-200 bg-gray-50">
-            <h1 class="text-xl font-bold tracking-tight">BLOCO DE ANOTAÇÕES (DESPESAS E CONTAS)</h1>
+        <div class="p-6 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+            <h1 class="text-xl font-bold tracking-tight text-gray-900">BLOCO DE ANOTAÇÕES (DESPESAS E CONTAS)</h1>
+            <button id="save-button" onclick="saveToSheets()" class="btn-save bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-bold shadow-sm">
+                SALVAR NA PLANILHA
+            </button>
         </div>
 
         <div class="flex-grow overflow-x-auto">
@@ -103,22 +79,18 @@
     </div>
 
     <script>
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbzRmEGyiMFnAAAuLQl9QDdi2JYN4q_v2puE0YX7l8eIKtuE81UvEcj7YDRQlscASqG3yg/exec";
         const expenseList = document.getElementById('expense-list');
         const grandTotalDisplay = document.getElementById('grand-total');
+        const saveButton = document.getElementById('save-button');
 
         function createRow() {
             const tr = document.createElement('tr');
             tr.className = 'hover:bg-gray-50 transition-colors';
             tr.innerHTML = `
-                <td>
-                    <input type="text" class="desc-input" placeholder="Digite a despesa...">
-                </td>
-                <td class="value-col">
-                    <input type="number" step="0.01" class="val-input text-right font-medium" placeholder="0,00" oninput="calculate()">
-                </td>
-                <td class="delete-col">
-                    <button onclick="removeRow(this)" class="w-full h-full text-gray-400 hover:text-red-600 font-bold">×</button>
-                </td>
+                <td><input type="text" class="desc-input" placeholder="Digite a despesa..."></td>
+                <td class="value-col"><input type="number" step="0.01" class="val-input text-right font-medium" placeholder="0,00" oninput="calculate()"></td>
+                <td class="delete-col"><button onclick="removeRow(this)" class="w-full h-full text-gray-400 hover:text-red-600 font-bold">×</button></td>
             `;
             return tr;
         }
@@ -130,8 +102,7 @@
         }
 
         function removeRow(btn) {
-            const row = btn.closest('tr');
-            row.remove();
+            btn.closest('tr').remove();
             calculate();
             if (expenseList.children.length === 0) addRow();
         }
@@ -143,17 +114,46 @@
                 const v = parseFloat(i.value);
                 if (!isNaN(v)) total += v;
             });
-            
-            grandTotalDisplay.innerText = total.toLocaleString('pt-BR', {
-                style: 'currency',
-                currency: 'BRL'
-            });
+            grandTotalDisplay.innerText = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         }
 
-        // Inicializa com 5 linhas vazias para dar o aspecto de "bloco"
-        window.onload = () => {
-            for(let i=0; i<5; i++) addRow();
-        };
+        async function saveToSheets() {
+            const rows = document.querySelectorAll('#expense-list tr');
+            const items = [];
+            rows.forEach(row => {
+                const desc = row.querySelector('.desc-input').value.trim();
+                const val = parseFloat(row.querySelector('.val-input').value);
+                if (desc && !isNaN(val)) items.push({ description: desc, value: val });
+            });
+
+            if (items.length === 0) {
+                alert("Adicione pelo menos uma despesa válida.");
+                return;
+            }
+
+            saveButton.disabled = true;
+            saveButton.innerText = "SALVANDO...";
+
+            try {
+                await fetch(GAS_URL, {
+                    method: "POST",
+                    mode: "no-cors",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ items: items })
+                });
+                alert("Dados enviados! Verifique sua planilha.");
+                expenseList.innerHTML = "";
+                for(let i=0; i<5; i++) addRow();
+                calculate();
+            } catch (e) {
+                alert("Erro ao salvar.");
+            } finally {
+                saveButton.disabled = false;
+                saveButton.innerText = "SALVAR NA PLANILHA";
+            }
+        }
+
+        window.onload = () => { for(let i=0; i<5; i++) addRow(); };
     </script>
 </body>
 </html>
