@@ -4,28 +4,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BLOCO DE ANOTAÇÕES (DESPESAS E CONTAS)</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#111827">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #f3f4f6; font-family: 'Inter', sans-serif; }
+        body { background-color: #111827; font-family: 'Inter', sans-serif; color: #e5e7eb; }
         .notebook-page {
-            background: white;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+            background: #1f2937;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
             min-height: 80vh;
             border-radius: 4px;
             display: flex;
             flex-direction: column;
-            border: 1px solid #d1d5db;
+            border: 1px solid #374151;
         }
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        th, td { border: 1px solid #e5e7eb; padding: 0; }
+        th, td { border: 1px solid #374151; padding: 0; }
         th {
-            background-color: #f9fafb;
+            background-color: #111827;
             text-align: left;
             padding: 12px;
             font-size: 0.75rem;
             text-transform: uppercase;
-            color: #4b5563;
-            border-bottom: 2px solid #d1d5db;
+            color: #9ca3af;
+            border-bottom: 2px solid #4b5563;
         }
         input {
             background: transparent;
@@ -34,23 +36,21 @@
             padding: 12px;
             width: 100%;
             display: block;
+            color: #f3f4f6;
         }
-        input:focus { background-color: #eff6ff; }
-        .total-footer { border-top: 3px double #374151; background: #f9fafb; }
+        input:focus { background-color: #374151; }
+        .total-footer { border-top: 3px double #4b5563; background: #111827; }
         .delete-col { width: 50px; text-align: center; }
         .value-col { width: 150px; }
-        .btn-save { transition: all 0.2s; }
-        .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+        #save-indicator { font-size: 0.7rem; color: #10b981; opacity: 0; transition: opacity 0.3s; }
     </style>
 </head>
-<body class="p-4 md:p-10 text-gray-800">
+<body class="p-4 md:p-10">
 
     <div class="max-w-4xl mx-auto notebook-page">
-        <div class="p-6 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-            <h1 class="text-xl font-bold tracking-tight text-gray-900">BLOCO DE ANOTAÇÕES (DESPESAS E CONTAS)</h1>
-            <button id="save-button" onclick="saveToSheets()" class="btn-save bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-bold shadow-sm">
-                SALVAR NA PLANILHA
-            </button>
+        <div class="p-6 border-b border-gray-700 bg-gray-900 flex justify-between items-center">
+            <h1 class="text-xl font-bold tracking-tight text-gray-100 uppercase">BLOCO DE ANOTAÇÕES (DESPESAS E CONTAS)</h1>
+            <span id="save-indicator">Sincronizado com Planilha</span>
         </div>
 
         <div class="flex-grow overflow-x-auto">
@@ -65,8 +65,8 @@
                 <tbody id="expense-list"></tbody>
             </table>
             
-            <div class="p-4 border-t border-gray-200">
-                <button onclick="addRow()" class="text-sm font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1">
+            <div class="p-4 border-t border-gray-700">
+                <button onclick="addRow()" class="text-sm font-bold text-blue-400 hover:text-blue-300 flex items-center gap-1">
                     <span>+</span> ADICIONAR NOVA LINHA
                 </button>
             </div>
@@ -74,7 +74,7 @@
 
         <div class="total-footer p-6 mt-auto flex justify-between items-center">
             <span class="text-sm font-black uppercase tracking-widest text-gray-500">Total Geral:</span>
-            <span id="grand-total" class="text-3xl font-mono font-bold text-gray-900">R$ 0,00</span>
+            <span id="grand-total" class="text-3xl font-mono font-bold text-green-400">R$ 0,00</span>
         </div>
     </div>
 
@@ -82,15 +82,22 @@
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzRmEGyiMFnAAAuLQl9QDdi2JYN4q_v2puE0YX7l8eIKtuE81UvEcj7YDRQlscASqG3yg/exec";
         const expenseList = document.getElementById('expense-list');
         const grandTotalDisplay = document.getElementById('grand-total');
-        const saveButton = document.getElementById('save-button');
+        const saveIndicator = document.getElementById('save-indicator');
+        let saveTimeout;
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(() => {});
+            });
+        }
 
         function createRow() {
             const tr = document.createElement('tr');
-            tr.className = 'hover:bg-gray-50 transition-colors';
+            tr.className = 'hover:bg-gray-800 transition-colors';
             tr.innerHTML = `
-                <td><input type="text" class="desc-input" placeholder="Digite a despesa..."></td>
-                <td class="value-col"><input type="number" step="0.01" class="val-input text-right font-medium" placeholder="0,00" oninput="calculate()"></td>
-                <td class="delete-col"><button onclick="removeRow(this)" class="w-full h-full text-gray-400 hover:text-red-600 font-bold">×</button></td>
+                <td><input type="text" class="desc-input" placeholder="..." oninput="triggerAutoSave()"></td>
+                <td class="value-col"><input type="number" step="0.01" class="val-input text-right font-medium" placeholder="0,00" oninput="onValueInput()"></td>
+                <td class="delete-col"><button onclick="removeRow(this)" class="w-full h-full text-gray-500 hover:text-red-400 font-bold">×</button></td>
             `;
             return tr;
         }
@@ -105,6 +112,12 @@
             btn.closest('tr').remove();
             calculate();
             if (expenseList.children.length === 0) addRow();
+            triggerAutoSave();
+        }
+
+        function onValueInput() {
+            calculate();
+            triggerAutoSave();
         }
 
         function calculate() {
@@ -117,7 +130,12 @@
             grandTotalDisplay.innerText = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         }
 
-        async function saveToSheets() {
+        function triggerAutoSave() {
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(autoSave, 2000); // Aguarda 2 segundos de inatividade para salvar
+        }
+
+        async function autoSave() {
             const rows = document.querySelectorAll('#expense-list tr');
             const items = [];
             rows.forEach(row => {
@@ -126,34 +144,30 @@
                 if (desc && !isNaN(val)) items.push({ description: desc, value: val });
             });
 
-            if (items.length === 0) {
-                alert("Adicione pelo menos uma despesa válida.");
-                return;
-            }
-
-            saveButton.disabled = true;
-            saveButton.innerText = "SALVANDO...";
+            if (items.length === 0) return;
 
             try {
+                saveIndicator.innerText = "Salvando...";
+                saveIndicator.style.opacity = "1";
+                
                 await fetch(GAS_URL, {
                     method: "POST",
                     mode: "no-cors",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ items: items })
                 });
-                alert("Dados enviados! Verifique sua planilha.");
-                expenseList.innerHTML = "";
-                for(let i=0; i<5; i++) addRow();
-                calculate();
+
+                setTimeout(() => {
+                    saveIndicator.innerText = "Salvo na Planilha";
+                    setTimeout(() => saveIndicator.style.opacity = "0", 2000);
+                }, 500);
             } catch (e) {
-                alert("Erro ao salvar.");
-            } finally {
-                saveButton.disabled = false;
-                saveButton.innerText = "SALVAR NA PLANILHA";
+                saveIndicator.innerText = "Erro ao sincronizar";
+                saveIndicator.style.color = "#ef4444";
             }
         }
 
-        window.onload = () => { for(let i=0; i<5; i++) addRow(); };
+        window.onload = () => { addRow(); };
     </script>
 </body>
 </html>
