@@ -2,7 +2,9 @@ const CACHE_NAME = 'notas-v2';
 const ASSETS = [
   './',
   './index.html',
-  '[https://cdn.tailwindcss.com](https://cdn.tailwindcss.com)'
+  './manifest.json',
+  './logo.png',
+  'https://cdn.tailwindcss.com'
 ];
 
 self.addEventListener('install', (e) => {
