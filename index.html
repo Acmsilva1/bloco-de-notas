@@ -2,79 +2,66 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BLOCO DE ANOTAÇÕES (DESPESAS E CONTAS)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NOTAS</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#111827">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="logo.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #111827; font-family: 'Inter', sans-serif; color: #e5e7eb; }
+        body { background-color: #111827; font-family: 'Inter', sans-serif; color: #e5e7eb; overflow-x: hidden; }
         .notebook-page {
             background: #1f2937;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
-            min-height: 80vh;
-            border-radius: 4px;
+            min-height: 90vh;
             display: flex;
             flex-direction: column;
             border: 1px solid #374151;
         }
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        th, td { border: 1px solid #374151; padding: 0; }
-        th {
-            background-color: #111827;
-            text-align: left;
-            padding: 12px;
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            color: #9ca3af;
-            border-bottom: 2px solid #4b5563;
-        }
-        input {
-            background: transparent;
-            border: none;
-            outline: none;
-            padding: 12px;
-            width: 100%;
-            display: block;
-            color: #f3f4f6;
-        }
+        th, td { border: 1px solid #374151; }
+        th { background-color: #111827; padding: 10px; font-size: 0.65rem; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; }
+        input { background: transparent; border: none; outline: none; padding: 12px; width: 100%; color: #f3f4f6; font-size: 16px; }
         input:focus { background-color: #374151; }
-        .total-footer { border-top: 3px double #4b5563; background: #111827; }
-        .delete-col { width: 50px; text-align: center; }
-        .value-col { width: 150px; }
-        #save-indicator { font-size: 0.7rem; color: #10b981; opacity: 0; transition: opacity 0.3s; }
+        .total-footer { border-top: 3px double #4b5563; background: #111827; position: sticky; bottom: 0; }
+        #save-indicator { font-size: 0.6rem; color: #10b981; opacity: 0; transition: opacity 0.3s; font-weight: bold; }
+        .status-btn { font-size: 0.6rem; font-weight: 800; padding: 4px 6px; border-radius: 4px; transition: all 0.2s; text-transform: uppercase; width: 75px; }
+        .status-pendente { background-color: #991b1b; color: #fca5a5; }
+        .status-pago { background-color: #065f46; color: #6ee7b7; }
     </style>
 </head>
-<body class="p-4 md:p-10">
+<body class="p-2 md:p-10">
 
     <div class="max-w-4xl mx-auto notebook-page">
-        <div class="p-6 border-b border-gray-700 bg-gray-900 flex justify-between items-center">
-            <h1 class="text-xl font-bold tracking-tight text-gray-100 uppercase">BLOCO DE ANOTAÇÕES (DESPESAS E CONTAS)</h1>
-            <span id="save-indicator">Sincronizado com Planilha</span>
+        <div class="p-4 border-b border-gray-700 bg-gray-900 flex justify-between items-center">
+            <h1 class="text-sm font-bold tracking-widest text-gray-400 uppercase">Gestão Financeira</h1>
+            <span id="save-indicator">SINCRONIZADO</span>
         </div>
 
         <div class="flex-grow overflow-x-auto">
-            <table id="main-table">
+            <table>
                 <thead>
                     <tr>
-                        <th class="pl-4">Descrição do Item</th>
-                        <th class="value-col text-center">Valor (R$)</th>
-                        <th class="delete-col"></th>
+                        <th class="w-1/2">Descrição</th>
+                        <th class="w-1/4">Valor</th>
+                        <th class="w-24">Status</th>
+                        <th class="w-10"></th>
                     </tr>
                 </thead>
                 <tbody id="expense-list"></tbody>
             </table>
             
-            <div class="p-4 border-t border-gray-700">
-                <button onclick="addRow()" class="text-sm font-bold text-blue-400 hover:text-blue-300 flex items-center gap-1">
-                    <span>+</span> ADICIONAR NOVA LINHA
+            <div class="p-4">
+                <button onclick="addRow()" class="text-xs font-bold text-blue-400 uppercase tracking-tighter hover:text-blue-300">
+                    + Adicionar Item
                 </button>
             </div>
         </div>
 
-        <div class="total-footer p-6 mt-auto flex justify-between items-center">
-            <span class="text-sm font-black uppercase tracking-widest text-gray-500">Total Geral:</span>
-            <span id="grand-total" class="text-3xl font-mono font-bold text-green-400">R$ 0,00</span>
+        <div class="total-footer p-6 flex justify-between items-center">
+            <span class="text-xs font-black uppercase text-gray-500">Total:</span>
+            <span id="grand-total" class="text-2xl font-mono font-bold text-green-400">R$ 0,00</span>
         </div>
     </div>
 
@@ -91,13 +78,27 @@
             });
         }
 
+        function toggleStatus(btn) {
+            if (btn.innerText === "PENDENTE") {
+                btn.innerText = "PAGO";
+                btn.className = "status-btn status-pago";
+            } else {
+                btn.innerText = "PENDENTE";
+                btn.className = "status-btn status-pendente";
+            }
+            triggerAutoSave();
+        }
+
         function createRow() {
             const tr = document.createElement('tr');
             tr.className = 'hover:bg-gray-800 transition-colors';
             tr.innerHTML = `
                 <td><input type="text" class="desc-input" placeholder="..." oninput="triggerAutoSave()"></td>
-                <td class="value-col"><input type="number" step="0.01" class="val-input text-right font-medium" placeholder="0,00" oninput="onValueInput()"></td>
-                <td class="delete-col"><button onclick="removeRow(this)" class="w-full h-full text-gray-500 hover:text-red-400 font-bold">×</button></td>
+                <td><input type="number" step="0.01" class="val-input text-right" placeholder="0" oninput="onValueInput()"></td>
+                <td class="text-center">
+                    <button onclick="toggleStatus(this)" class="status-btn status-pendente">PENDENTE</button>
+                </td>
+                <td class="text-center"><button onclick="removeRow(this)" class="text-gray-600 p-2 font-bold">×</button></td>
             `;
             return tr;
         }
@@ -105,7 +106,6 @@
         function addRow() {
             const row = createRow();
             expenseList.appendChild(row);
-            row.querySelector('.desc-input').focus();
         }
 
         function removeRow(btn) {
@@ -132,7 +132,7 @@
 
         function triggerAutoSave() {
             clearTimeout(saveTimeout);
-            saveTimeout = setTimeout(autoSave, 2000); // Aguarda 2 segundos de inatividade para salvar
+            saveTimeout = setTimeout(autoSave, 2500);
         }
 
         async function autoSave() {
@@ -141,13 +141,17 @@
             rows.forEach(row => {
                 const desc = row.querySelector('.desc-input').value.trim();
                 const val = parseFloat(row.querySelector('.val-input').value);
-                if (desc && !isNaN(val)) items.push({ description: desc, value: val });
+                const stat = row.querySelector('.status-btn').innerText;
+
+                if (desc && !isNaN(val)) {
+                    items.push({ description: desc, value: val, status: stat });
+                }
             });
 
             if (items.length === 0) return;
 
             try {
-                saveIndicator.innerText = "Salvando...";
+                saveIndicator.innerText = "SINCRONIZANDO...";
                 saveIndicator.style.opacity = "1";
                 
                 await fetch(GAS_URL, {
@@ -158,11 +162,11 @@
                 });
 
                 setTimeout(() => {
-                    saveIndicator.innerText = "Salvo na Planilha";
+                    saveIndicator.innerText = "SINCRONIZADO";
                     setTimeout(() => saveIndicator.style.opacity = "0", 2000);
                 }, 500);
             } catch (e) {
-                saveIndicator.innerText = "Erro ao sincronizar";
+                saveIndicator.innerText = "ERRO OFFLINE";
                 saveIndicator.style.color = "#ef4444";
             }
         }
