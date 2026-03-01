@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NOTAS COLETIVAS</title>
+    <title>NOTAS MENSAL</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#111827">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -15,26 +15,40 @@
         .notebook-page { background: #1f2937; min-height: 90vh; display: flex; flex-direction: column; border: 1px solid #374151; }
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         th, td { border: 1px solid #374151; }
-        th { background-color: #111827; padding: 10px; font-size: 0.65rem; color: #9ca3af; text-transform: uppercase; }
+        th { background-color: #111827; padding: 10px; font-size: 0.6rem; color: #9ca3af; text-transform: uppercase; }
         input { background: transparent; border: none; outline: none; padding: 12px; width: 100%; color: #f3f4f6; font-size: 16px; }
         .total-footer { border-top: 3px double #4b5563; background: #111827; position: sticky; bottom: 0; }
         #save-indicator { font-size: 0.6rem; color: #10b981; opacity: 0; transition: opacity 0.3s; font-weight: bold; }
-        .status-btn { font-size: 0.6rem; font-weight: 800; padding: 4px 6px; border-radius: 4px; transition: all 0.2s; text-transform: uppercase; width: 75px; }
+        .status-btn { font-size: 0.55rem; font-weight: 800; padding: 4px; border-radius: 4px; text-transform: uppercase; width: 65px; }
         .status-pendente { background-color: #991b1b; color: #fca5a5; }
         .status-pago { background-color: #065f46; color: #6ee7b7; }
-        #loader { position: fixed; inset: 0; background: rgba(17, 24, 39, 0.9); display: flex; align-items: center; justify-content: center; z-index: 100; font-weight: bold; color: #60a5fa; }
+        #loader { position: fixed; inset: 0; background: rgba(17, 24, 39, 0.9); display: flex; align-items: center; justify-content: center; z-index: 100; color: #60a5fa; font-weight: bold; }
+        select { background: #374151; color: white; border: none; padding: 5px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; outline: none; }
     </style>
 </head>
 <body class="p-2 md:p-10">
 
-    <div id="loader">SINCRONIZANDO COM A NUVEM...</div>
+    <div id="loader">SINCRONIZANDO MÊS...</div>
 
     <div class="max-w-4xl mx-auto notebook-page">
-        <div class="p-4 border-b border-gray-700 bg-gray-900 flex justify-between items-center">
-            <h1 class="text-sm font-bold tracking-widest text-gray-400 uppercase">Fluxo Compartilhado</h1>
-            <div class="flex items-center gap-4">
-                <button onclick="fetchData()" class="text-[10px] text-blue-400 hover:text-blue-300 uppercase font-bold border border-blue-900 px-2 py-1 rounded">Atualizar</button>
-                <span id="save-indicator">SINCRONIZADO</span>
+        <div class="p-4 border-b border-gray-700 bg-gray-900 flex justify-between items-center gap-2">
+            <select id="month-selector" onchange="fetchData()">
+                <option value="Janeiro">JANEIRO</option>
+                <option value="Fevereiro">FEVEREIRO</option>
+                <option value="Março">MARÇO</option>
+                <option value="Abril">ABRIL</option>
+                <option value="Maio">MAIO</option>
+                <option value="Junho">JUNHO</option>
+                <option value="Julho">JULHO</option>
+                <option value="Agosto">AGOSTO</option>
+                <option value="Setembro">SETEMBRO</option>
+                <option value="Outubro">OUTUBRO</option>
+                <option value="Novembro">NOVEMBRO</option>
+                <option value="Dezembro">DEZEMBRO</option>
+            </select>
+            <div class="flex items-center gap-2">
+                <span id="save-indicator">SALVO</span>
+                <button onclick="fetchData()" class="text-[9px] border border-blue-900 px-2 py-1 rounded text-blue-400">REFRESH</button>
             </div>
         </div>
 
@@ -42,42 +56,44 @@
             <table>
                 <thead>
                     <tr>
-                        <th class="w-1/2">Descrição</th>
-                        <th class="w-1/4">Valor</th>
-                        <th class="w-24">Status</th>
-                        <th class="w-10"></th>
+                        <th class="w-1/2">Item</th>
+                        <th class="w-1/4">R$</th>
+                        <th class="w-20">Status</th>
+                        <th class="w-8"></th>
                     </tr>
                 </thead>
                 <tbody id="expense-list"></tbody>
             </table>
-            
             <div class="p-4">
-                <button onclick="addRow()" class="text-xs font-bold text-blue-400 uppercase tracking-tighter hover:text-blue-300">
-                    + Adicionar Item
-                </button>
+                <button onclick="addRow()" class="text-xs font-bold text-blue-400 uppercase">+ Novo Item</button>
             </div>
         </div>
 
         <div class="total-footer p-6 flex justify-between items-center">
-            <span class="text-xs font-black uppercase text-gray-500">Total:</span>
-            <span id="grand-total" class="text-2xl font-mono font-bold text-green-400">R$ 0,00</span>
+            <span class="text-[10px] font-black uppercase text-gray-500">Total do Mês:</span>
+            <span id="grand-total" class="text-xl font-mono font-bold text-green-400">R$ 0,00</span>
         </div>
     </div>
 
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzRmEGyiMFnAAAuLQl9QDdi2JYN4q_v2puE0YX7l8eIKtuE81UvEcj7YDRQlscASqG3yg/exec";
         const expenseList = document.getElementById('expense-list');
+        const monthSelector = document.getElementById('month-selector');
         const grandTotalDisplay = document.getElementById('grand-total');
         const saveIndicator = document.getElementById('save-indicator');
         const loader = document.getElementById('loader');
         let saveTimeout;
 
+        // Define mês atual no seletor ao carregar
+        const currentMonth = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"][new Date().getMonth()];
+        monthSelector.value = currentMonth;
+
         async function fetchData() {
             loader.style.display = "flex";
+            const selectedMonth = monthSelector.value;
             try {
-                const response = await fetch(`${GAS_URL}?t=${Date.now()}`);
+                const response = await fetch(`${GAS_URL}?month=${selectedMonth}&t=${Date.now()}`);
                 const data = await response.json();
-                
                 expenseList.innerHTML = '';
                 if (data && data.length > 0) {
                     data.forEach(item => expenseList.appendChild(createRow(item)));
@@ -86,7 +102,7 @@
                 }
                 calculate();
             } catch (e) {
-                console.error("Erro ao carregar:", e);
+                console.error(e);
                 addRow();
             } finally {
                 loader.style.display = "none";
@@ -97,40 +113,29 @@
             const tr = document.createElement('tr');
             const statusClass = data.status === "PAGO" ? "status-btn status-pago" : "status-btn status-pendente";
             tr.innerHTML = `
-                <td><input type="text" class="desc-input" value="${data.desc || ''}" placeholder="..." oninput="triggerAutoSave()"></td>
-                <td><input type="number" step="0.01" class="val-input text-right" value="${data.val || ''}" placeholder="0" oninput="onValueInput()"></td>
+                <td><input type="text" class="desc-input" value="${data.desc || ''}" oninput="triggerAutoSave()"></td>
+                <td><input type="number" step="0.01" class="val-input text-right" value="${data.val || ''}" oninput="onValueInput()"></td>
                 <td class="text-center">
                     <button onclick="toggleStatus(this)" class="${statusClass}">${data.status || 'PENDENTE'}</button>
                 </td>
-                <td class="text-center"><button onclick="removeRow(this)" class="text-gray-600 p-2 font-bold">×</button></td>
+                <td class="text-center"><button onclick="removeRow(this)" class="text-gray-600 font-bold">×</button></td>
             `;
             return tr;
         }
 
         function toggleStatus(btn) {
-            if (btn.innerText === "PENDENTE") {
-                btn.innerText = "PAGO"; btn.className = "status-btn status-pago";
-            } else {
-                btn.innerText = "PENDENTE"; btn.className = "status-btn status-pendente";
-            }
+            btn.innerText = btn.innerText === "PENDENTE" ? "PAGO" : "PENDENTE";
+            btn.className = btn.innerText === "PAGO" ? "status-btn status-pago" : "status-btn status-pendente";
             triggerAutoSave();
         }
 
         function addRow() { expenseList.appendChild(createRow()); }
-
-        function removeRow(btn) {
-            btn.closest('tr').remove();
-            calculate();
-            if (expenseList.children.length === 0) addRow();
-            triggerAutoSave();
-        }
-
+        function removeRow(btn) { btn.closest('tr').remove(); calculate(); triggerAutoSave(); }
         function onValueInput() { calculate(); triggerAutoSave(); }
 
         function calculate() {
-            const inputs = document.querySelectorAll('.val-input');
             let total = 0;
-            inputs.forEach(i => {
+            document.querySelectorAll('.val-input').forEach(i => {
                 const v = parseFloat(i.value);
                 if (!isNaN(v)) total += v;
             });
@@ -139,37 +144,31 @@
 
         function triggerAutoSave() {
             clearTimeout(saveTimeout);
-            saveTimeout = setTimeout(autoSave, 2500);
+            saveTimeout = setTimeout(autoSave, 2000);
         }
 
         async function autoSave() {
-            const rows = document.querySelectorAll('#expense-list tr');
             const items = [];
-            rows.forEach(row => {
+            document.querySelectorAll('#expense-list tr').forEach(row => {
                 const desc = row.querySelector('.desc-input').value.trim();
                 const val = parseFloat(row.querySelector('.val-input').value);
                 const stat = row.querySelector('.status-btn').innerText;
-                if (desc || !isNaN(val)) {
-                    items.push({ description: desc, value: val, status: stat });
-                }
+                if (desc || !isNaN(val)) items.push({ description: desc, value: val, status: stat });
             });
 
+            saveIndicator.innerText = "SALVANDO...";
+            saveIndicator.style.opacity = "1";
+
             try {
-                saveIndicator.innerText = "SINCRONIZANDO...";
-                saveIndicator.style.opacity = "1";
                 await fetch(GAS_URL, {
                     method: "POST",
                     mode: "no-cors",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ items: items })
+                    body: JSON.stringify({ month: monthSelector.value, items: items })
                 });
-                setTimeout(() => {
-                    saveIndicator.innerText = "SINCRONIZADO";
-                    setTimeout(() => saveIndicator.style.opacity = "0", 2000);
-                }, 500);
+                saveIndicator.innerText = "SALVO";
+                setTimeout(() => saveIndicator.style.opacity = "0", 2000);
             } catch (e) {
-                saveIndicator.innerText = "ERRO DE REDE";
-                saveIndicator.style.color = "#ef4444";
+                saveIndicator.innerText = "ERRO";
             }
         }
 
