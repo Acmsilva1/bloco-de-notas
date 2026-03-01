@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NOTAS FINANCEIRAS</title>
+    <title>NOTAS FINANCEIRAS PRO</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #111827; color: #e5e7eb; font-family: ui-sans-serif, system-ui, sans-serif; }
@@ -13,7 +13,7 @@
         .pendente { background: #7f1d1d; color: #fecaca; }
         .pago { background: #064e3b; color: #d1fae5; }
         #loader { position: fixed; inset: 0; background: rgba(17, 24, 39, 0.9); display: none; align-items: center; justify-content: center; z-index: 100; font-style: italic; color: #60a5fa; }
-        select { background: #111827; color: #60a5fa; border: 1px solid #374151; padding: 8px; rounded: 8px; font-weight: bold; appearance: none; text-align: center; }
+        select { background: #111827; color: #60a5fa; border: 1px solid #374151; padding: 8px; border-radius: 8px; font-weight: bold; appearance: none; text-align: center; }
     </style>
 </head>
 <body class="p-4 md:p-8">
@@ -39,7 +39,7 @@
             <div id="save-status" class="text-[10px] font-black text-green-500 opacity-0 uppercase tracking-widest">Sincronizado</div>
         </div>
 
-        <div class="card shadow-2xl">
+        <div class="card shadow-2xl mb-6">
             <table class="w-full">
                 <thead class="bg-gray-900/50 text-[10px] text-gray-500 uppercase">
                     <tr>
@@ -56,9 +56,21 @@
             </div>
         </div>
 
-        <div class="mt-10 flex flex-col items-end px-2">
-            <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Total Acumulado</span>
-            <span id="total-val" class="text-4xl font-mono font-black text-green-500">R$ 0,00</span>
+        <!-- RESUMO FINANCEIRO ANALÍTICO -->
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div class="card p-4 border-l-4 border-l-green-600">
+                <span class="text-[9px] text-gray-400 uppercase font-bold tracking-widest">Já Pago</span>
+                <div id="total-pago" class="text-xl font-mono font-bold text-green-400">R$ 0,00</div>
+            </div>
+            <div class="card p-4 border-l-4 border-l-red-600">
+                <span class="text-[9px] text-gray-400 uppercase font-bold tracking-widest">Pendente</span>
+                <div id="total-pendente" class="text-xl font-mono font-bold text-red-400">R$ 0,00</div>
+            </div>
+        </div>
+
+        <div class="flex flex-col items-end px-2">
+            <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Total do Mês</span>
+            <span id="total-val" class="text-4xl font-mono font-black text-blue-400">R$ 0,00</span>
         </div>
     </div>
 
@@ -67,6 +79,8 @@
         const list = document.getElementById('list-container');
         const monthSelect = document.getElementById('month-select');
         const totalDisp = document.getElementById('total-val');
+        const totalPagoDisp = document.getElementById('total-pago');
+        const totalPendenteDisp = document.getElementById('total-pendente');
         const saveStatus = document.getElementById('save-status');
         const loader = document.getElementById('loader');
         let autoSaveTimer;
@@ -121,12 +135,24 @@
         }
 
         function calculate() {
-            let total = 0;
-            document.querySelectorAll('.row-val').forEach(i => {
-                const val = parseFloat(i.value);
-                if(!isNaN(val)) total += val;
+            let totalGeral = 0;
+            let totalPago = 0;
+            let totalPendente = 0;
+
+            document.querySelectorAll('#list-container tr').forEach(tr => {
+                const val = parseFloat(tr.querySelector('.row-val').value);
+                const status = tr.querySelector('.status-btn').innerText;
+
+                if(!isNaN(val)) {
+                    totalGeral += val;
+                    if(status === 'PAGO') totalPago += val;
+                    else totalPendente += val;
+                }
             });
-            totalDisp.innerText = total.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+
+            totalDisp.innerText = totalGeral.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+            totalPagoDisp.innerText = totalPago.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+            totalPendenteDisp.innerText = totalPendente.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
         }
 
         async function sendToSheets() {
