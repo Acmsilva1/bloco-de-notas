@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>NOTAS FINANCEIRAS PRO</title>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="FINANCEIRO PRO">
+    <meta name="theme-color" content="#111827">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/552/552791.png">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #111827; color: #e5e7eb; font-family: ui-sans-serif, system-ui, sans-serif; }
@@ -23,13 +30,13 @@
 
     <div id="import-modal" class="modal-overlay p-4">
         <div class="card w-full max-w-md p-6 shadow-2xl">
-            <h3 class="text-sm font-black mb-4 uppercase text-purple-400 tracking-tighter">Clonar Dados de Outro Mês</h3>
+            <h3 class="text-sm font-black mb-4 uppercase text-purple-400 tracking-tighter">Clonar Dados Anteriores</h3>
             <div class="mb-4">
-                <label class="text-[9px] text-gray-500 uppercase font-bold">Selecionar Origem:</label>
+                <label class="text-[9px] text-gray-500 uppercase font-bold">Mês de Origem:</label>
                 <select id="import-month-select" class="w-full mt-1 text-sm"></select>
             </div>
-            <div id="import-items-list" class="max-h-60 overflow-y-auto mb-6 border border-gray-700/50 rounded-lg p-2 bg-black/20">
-                <p class="text-[10px] text-gray-500 text-center py-4 italic">Selecione um mês para carregar itens...</p>
+            <div id="import-items-list" class="max-h-60 overflow-y-auto mb-6 border border-gray-700/50 rounded-lg p-2 bg-black/20 text-xs">
+                <p class="text-gray-500 text-center py-4 italic">Selecione o mês acima...</p>
             </div>
             <div class="flex gap-2">
                 <button onclick="confirmImport()" class="flex-1 bg-purple-600 hover:bg-purple-500 p-3 rounded-lg font-black text-[10px] uppercase transition-colors">Importar</button>
@@ -57,7 +64,7 @@
             <div id="save-status" class="text-[10px] font-black text-green-500 opacity-0 uppercase tracking-widest transition-opacity">Sincronizado</div>
         </div>
 
-        <div class="card shadow-2xl mb-6">
+        <div class="card shadow-2xl mb-6 overflow-hidden">
             <table class="w-full">
                 <thead class="bg-gray-900/50 text-[10px] text-gray-500 uppercase">
                     <tr>
@@ -69,9 +76,9 @@
                 </thead>
                 <tbody id="list-container"></tbody>
             </table>
-            <div class="p-4 border-t border-gray-700/50 flex justify-between items-center">
+            <div class="p-4 border-t border-gray-700/50 flex justify-between items-center bg-gray-800/30">
                 <button onclick="addRow()" class="text-blue-400 text-xs font-black uppercase hover:text-blue-300 transition-colors">+ Novo Registro</button>
-                <button onclick="openImportModal()" class="text-purple-400 text-[10px] font-black uppercase hover:text-purple-300 transition-colors">📥 Importar Dados</button>
+                <button onclick="openImportModal()" class="text-purple-400 text-[10px] font-black uppercase hover:text-purple-300">📥 Importar Dados</button>
             </div>
         </div>
 
@@ -93,7 +100,9 @@
     </div>
 
     <script>
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbzRmEGyiMFnAAAuLQl9QDdi2JYN4q_v2puE0YX7l8eIKtuE81UvEcj7YDRQlscASqG3yg/exec";
+        // ATENÇÃO: Substitua pela sua URL após publicar
+        const GAS_URL = "SUA_URL_DO_DEPLOY_AQUI"; 
+        
         const list = document.getElementById('list-container');
         const monthSelect = document.getElementById('month-select');
         const totalDisp = document.getElementById('total-val');
@@ -102,6 +111,15 @@
         const saveStatus = document.getElementById('save-status');
         const loader = document.getElementById('loader');
         let autoSaveTimer;
+
+        // Registro de Service Worker para habilitar Instalação PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                const swContent = `self.addEventListener('fetch', (e) => {});`;
+                const blob = new Blob([swContent], { type: 'text/javascript' });
+                navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
+            });
+        }
 
         monthSelect.value = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"][new Date().getMonth()];
 
@@ -113,11 +131,9 @@
                 list.innerHTML = '';
                 if (data && data.length > 0) {
                     data.forEach(item => list.appendChild(createRow(item.desc, item.val, item.status)));
-                } else {
-                    addRow();
-                }
+                } else { addRow(); }
                 calculate();
-            } catch (e) { console.error("Erro de busca:", e); }
+            } catch (e) { console.error(e); }
             finally { loader.style.display = "none"; }
         }
 
@@ -159,8 +175,7 @@
                 const status = tr.querySelector('.status-btn').innerText;
                 if(!isNaN(val)) {
                     totalGeral += val;
-                    if(status === 'PAGO') totalPago += val;
-                    else totalPendente += val;
+                    if(status === 'PAGO') totalPago += val; else totalPendente += val;
                 }
             });
             totalDisp.innerText = totalGeral.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
@@ -181,10 +196,9 @@
             try {
                 await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ month: monthSelect.value, items: items }) });
                 setTimeout(() => { saveStatus.innerText = "SINCRONIZADO"; setTimeout(() => saveStatus.style.opacity = "0", 2000); }, 500);
-            } catch (e) { saveStatus.innerText = "ERRO NA NUVEM"; saveStatus.style.color = "#ef4444"; }
+            } catch (e) { saveStatus.innerText = "ERRO!"; }
         }
 
-        // --- FUNÇÕES DE IMPORTAÇÃO ---
         async function openImportModal() {
             loader.style.display = "flex";
             try {
@@ -197,19 +211,17 @@
                     const itemsRes = await fetch(`${GAS_URL}?month=${select.value}&t=${Date.now()}`);
                     const items = await itemsRes.json();
                     const container = document.getElementById('import-items-list');
-                    container.innerHTML = items.length ? items.map((item, i) => `
+                    container.innerHTML = items.length ? items.map(item => `
                         <label class="flex items-center gap-3 p-3 hover:bg-white/5 cursor-pointer border-b border-gray-800/50">
                             <input type="checkbox" class="import-check w-4 h-4 accent-purple-500" data-desc="${item.desc}" data-val="${item.val}" checked>
-                            <div class="flex flex-col">
-                                <span class="text-xs font-bold text-gray-200">${item.desc || 'Sem descrição'}</span>
-                                <span class="text-[10px] text-gray-500">R$ ${item.val || '0,00'}</span>
-                            </div>
+                            <span class="flex-1">${item.desc}</span>
+                            <span class="text-gray-500">R$ ${item.val}</span>
                         </label>
-                    `).join('') : '<p class="text-[10px] text-gray-500 text-center py-4">Nenhum dado neste mês.</p>';
+                    `).join('') : '<p class="text-center py-4">Vazio</p>';
                 };
                 select.onchange();
                 document.getElementById('import-modal').style.display = 'flex';
-            } catch (e) { alert("Erro ao carregar meses."); }
+            } catch (e) { alert("Erro ao importar."); }
             finally { loader.style.display = "none"; }
         }
 
@@ -217,17 +229,13 @@
 
         function confirmImport() {
             const checks = document.querySelectorAll('.import-check:checked');
-            if(checks.length === 0) return closeImportModal();
-            
-            // Se a primeira linha estiver vazia, remove ela antes de importar
-            const firstRow = list.querySelector('tr');
-            if(firstRow && !firstRow.querySelector('.row-desc').value && !firstRow.querySelector('.row-val').value) firstRow.remove();
-
-            checks.forEach(check => {
-                list.appendChild(createRow(check.getAttribute('data-desc'), check.getAttribute('data-val'), 'PENDENTE'));
-            });
+            if(checks.length > 0) {
+                const firstRow = list.querySelector('tr');
+                if(firstRow && !firstRow.querySelector('.row-desc').value) firstRow.remove();
+                checks.forEach(c => list.appendChild(createRow(c.getAttribute('data-desc'), c.getAttribute('data-val'), 'PENDENTE')));
+                planSave();
+            }
             closeImportModal();
-            planSave();
         }
 
         window.onload = fetchData;
