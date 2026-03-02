@@ -12,13 +12,31 @@
         .status-btn { font-size: 10px; font-weight: 900; padding: 6px 12px; border-radius: 6px; width: 85px; transition: all 0.2s; }
         .pendente { background: #7f1d1d; color: #fecaca; }
         .pago { background: #064e3b; color: #d1fae5; }
-        #loader { position: fixed; inset: 0; background: rgba(17, 24, 39, 0.9); display: none; align-items: center; justify-content: center; z-index: 100; font-style: italic; color: #60a5fa; }
+        #loader { position: fixed; inset: 0; background: rgba(17, 24, 39, 0.9); display: none; align-items: center; justify-content: center; z-index: 200; font-style: italic; color: #60a5fa; }
         select { background: #111827; color: #60a5fa; border: 1px solid #374151; padding: 8px; border-radius: 8px; font-weight: bold; appearance: none; text-align: center; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center; z-index: 150; }
     </style>
 </head>
 <body class="p-4 md:p-8">
 
     <div id="loader">SINCRONIZANDO GAVETAS...</div>
+
+    <div id="import-modal" class="modal-overlay p-4">
+        <div class="card w-full max-w-md p-6 shadow-2xl">
+            <h3 class="text-sm font-black mb-4 uppercase text-purple-400 tracking-tighter">Clonar Dados de Outro Mês</h3>
+            <div class="mb-4">
+                <label class="text-[9px] text-gray-500 uppercase font-bold">Selecionar Origem:</label>
+                <select id="import-month-select" class="w-full mt-1 text-sm"></select>
+            </div>
+            <div id="import-items-list" class="max-h-60 overflow-y-auto mb-6 border border-gray-700/50 rounded-lg p-2 bg-black/20">
+                <p class="text-[10px] text-gray-500 text-center py-4 italic">Selecione um mês para carregar itens...</p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="confirmImport()" class="flex-1 bg-purple-600 hover:bg-purple-500 p-3 rounded-lg font-black text-[10px] uppercase transition-colors">Importar</button>
+                <button onclick="closeImportModal()" class="flex-1 bg-gray-700 hover:bg-gray-600 p-3 rounded-lg font-black text-[10px] uppercase transition-colors">Cancelar</button>
+            </div>
+        </div>
+    </div>
 
     <div class="max-w-xl mx-auto">
         <div class="flex justify-between items-center mb-6">
@@ -36,7 +54,7 @@
                 <option value="Novembro">NOVEMBRO</option>
                 <option value="Dezembro">DEZEMBRO</option>
             </select>
-            <div id="save-status" class="text-[10px] font-black text-green-500 opacity-0 uppercase tracking-widest">Sincronizado</div>
+            <div id="save-status" class="text-[10px] font-black text-green-500 opacity-0 uppercase tracking-widest transition-opacity">Sincronizado</div>
         </div>
 
         <div class="card shadow-2xl mb-6">
@@ -51,12 +69,12 @@
                 </thead>
                 <tbody id="list-container"></tbody>
             </table>
-            <div class="p-4 border-t border-gray-700/50">
+            <div class="p-4 border-t border-gray-700/50 flex justify-between items-center">
                 <button onclick="addRow()" class="text-blue-400 text-xs font-black uppercase hover:text-blue-300 transition-colors">+ Novo Registro</button>
+                <button onclick="openImportModal()" class="text-purple-400 text-[10px] font-black uppercase hover:text-purple-300 transition-colors">📥 Importar Dados</button>
             </div>
         </div>
 
-        <!-- RESUMO FINANCEIRO ANALÍTICO -->
         <div class="grid grid-cols-2 gap-4 mb-6">
             <div class="card p-4 border-l-4 border-l-green-600">
                 <span class="text-[9px] text-gray-400 uppercase font-bold tracking-widest">Já Pago</span>
@@ -135,21 +153,16 @@
         }
 
         function calculate() {
-            let totalGeral = 0;
-            let totalPago = 0;
-            let totalPendente = 0;
-
+            let totalGeral = 0, totalPago = 0, totalPendente = 0;
             document.querySelectorAll('#list-container tr').forEach(tr => {
                 const val = parseFloat(tr.querySelector('.row-val').value);
                 const status = tr.querySelector('.status-btn').innerText;
-
                 if(!isNaN(val)) {
                     totalGeral += val;
                     if(status === 'PAGO') totalPago += val;
                     else totalPendente += val;
                 }
             });
-
             totalDisp.innerText = totalGeral.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
             totalPagoDisp.innerText = totalPago.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
             totalPendenteDisp.innerText = totalPendente.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
@@ -163,24 +176,58 @@
                 const s = tr.querySelector('.status-btn').innerText;
                 if(d || v) items.push({ description: d, value: v, status: s });
             });
-
             saveStatus.style.opacity = "1";
             saveStatus.innerText = "SALVANDO...";
-            
             try {
-                await fetch(GAS_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    body: JSON.stringify({ month: monthSelect.value, items: items })
-                });
-                setTimeout(() => {
-                    saveStatus.innerText = "SINCRONIZADO";
-                    setTimeout(() => saveStatus.style.opacity = "0", 2000);
-                }, 500);
-            } catch (e) {
-                saveStatus.innerText = "ERRO NA NUVEM";
-                saveStatus.style.color = "#ef4444";
-            }
+                await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ month: monthSelect.value, items: items }) });
+                setTimeout(() => { saveStatus.innerText = "SINCRONIZADO"; setTimeout(() => saveStatus.style.opacity = "0", 2000); }, 500);
+            } catch (e) { saveStatus.innerText = "ERRO NA NUVEM"; saveStatus.style.color = "#ef4444"; }
+        }
+
+        // --- FUNÇÕES DE IMPORTAÇÃO ---
+        async function openImportModal() {
+            loader.style.display = "flex";
+            try {
+                const res = await fetch(`${GAS_URL}?action=getMonths&t=${Date.now()}`);
+                const months = await res.json();
+                const select = document.getElementById('import-month-select');
+                select.innerHTML = months.map(m => `<option value="${m}">${m.toUpperCase()}</option>`).join('');
+                
+                select.onchange = async () => {
+                    const itemsRes = await fetch(`${GAS_URL}?month=${select.value}&t=${Date.now()}`);
+                    const items = await itemsRes.json();
+                    const container = document.getElementById('import-items-list');
+                    container.innerHTML = items.length ? items.map((item, i) => `
+                        <label class="flex items-center gap-3 p-3 hover:bg-white/5 cursor-pointer border-b border-gray-800/50">
+                            <input type="checkbox" class="import-check w-4 h-4 accent-purple-500" data-desc="${item.desc}" data-val="${item.val}" checked>
+                            <div class="flex flex-col">
+                                <span class="text-xs font-bold text-gray-200">${item.desc || 'Sem descrição'}</span>
+                                <span class="text-[10px] text-gray-500">R$ ${item.val || '0,00'}</span>
+                            </div>
+                        </label>
+                    `).join('') : '<p class="text-[10px] text-gray-500 text-center py-4">Nenhum dado neste mês.</p>';
+                };
+                select.onchange();
+                document.getElementById('import-modal').style.display = 'flex';
+            } catch (e) { alert("Erro ao carregar meses."); }
+            finally { loader.style.display = "none"; }
+        }
+
+        function closeImportModal() { document.getElementById('import-modal').style.display = 'none'; }
+
+        function confirmImport() {
+            const checks = document.querySelectorAll('.import-check:checked');
+            if(checks.length === 0) return closeImportModal();
+            
+            // Se a primeira linha estiver vazia, remove ela antes de importar
+            const firstRow = list.querySelector('tr');
+            if(firstRow && !firstRow.querySelector('.row-desc').value && !firstRow.querySelector('.row-val').value) firstRow.remove();
+
+            checks.forEach(check => {
+                list.appendChild(createRow(check.getAttribute('data-desc'), check.getAttribute('data-val'), 'PENDENTE'));
+            });
+            closeImportModal();
+            planSave();
         }
 
         window.onload = fetchData;
