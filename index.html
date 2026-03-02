@@ -3,17 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NOTAS FINANCEIRAS</title>
+    <title>NOTAS FINANCEIRAS PRO</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="FINANCEIRO PRO">
     <meta name="theme-color" content="#111827">
+    
+    <link rel="manifest" href='data:application/manifest+json,{"name":"Notas Financeiras","short_name":"Notas","start_url":".","display":"standalone","background_color":"#111827","theme_color":"#111827","icons":[{"src":"https://cdn-icons-png.flaticon.com/512/552/552791.png","sizes":"512x512","type":"image/png"}]}'>
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/552/552791.png">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #111827; color: #e5e7eb; font-family: ui-sans-serif, system-ui, sans-serif; }
+        body { background-color: #111827; color: #e5e7eb; font-family: ui-sans-serif, system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
         .card { background: #1f2937; border: 1px solid #374151; border-radius: 12px; }
         input { background: transparent; border: none; outline: none; width: 100%; color: white; padding: 12px; font-size: 16px; }
         .status-btn { font-size: 10px; font-weight: 900; padding: 6px 12px; border-radius: 6px; width: 85px; transition: all 0.2s; }
@@ -100,8 +101,7 @@
     </div>
 
     <script>
-        // ATENÇÃO: Substitua pela sua URL após publicar
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbzRmEGyiMFnAAAuLQl9QDdi2JYN4q_v2puE0YX7l8eIKtuE81UvEcj7YDRQlscASqG3yg/exec"; 
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbzRmEGyiMFnAAAuLQl9QDdi2JYN4q_v2puE0YX7l8eIKtuE81UvEcj7YDRQlscASqG3yg/exec"; // LEMBRE-SE DE COLAR A URL AQUI
         
         const list = document.getElementById('list-container');
         const monthSelect = document.getElementById('month-select');
@@ -112,12 +112,17 @@
         const loader = document.getElementById('loader');
         let autoSaveTimer;
 
-        // Registro de Service Worker para habilitar Instalação PWA
+        // Service Worker Robusto para PWA (Inline Blob)
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                const swContent = `self.addEventListener('fetch', (e) => {});`;
-                const blob = new Blob([swContent], { type: 'text/javascript' });
-                navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
+                const swCode = `
+                    self.addEventListener('install', e => self.skipWaiting());
+                    self.addEventListener('fetch', e => e.respondWith(fetch(e.request)));
+                `;
+                const blob = new Blob([swCode], { type: 'text/javascript' });
+                navigator.serviceWorker.register(URL.createObjectURL(blob))
+                    .then(() => console.log("PWA Ativo"))
+                    .catch(err => console.log("Erro PWA", err));
             });
         }
 
@@ -142,7 +147,7 @@
             tr.className = "border-b border-gray-800/50 last:border-0";
             const sClass = s === 'PAGO' ? 'pago' : 'pendente';
             tr.innerHTML = `
-                <td><input type="text" class="row-desc" value="${d}" placeholder="Ex: Aluguel" oninput="planSave()"></td>
+                <td><input type="text" class="row-desc" value="${d}" placeholder="Item..." oninput="planSave()"></td>
                 <td><input type="number" step="0.01" class="row-val text-right" value="${v}" placeholder="0.00" oninput="planSave()"></td>
                 <td class="p-2 text-center">
                     <button onclick="toggleStatus(this)" class="status-btn ${sClass}">${s}</button>
@@ -221,7 +226,7 @@
                 };
                 select.onchange();
                 document.getElementById('import-modal').style.display = 'flex';
-            } catch (e) { alert("Erro ao importar."); }
+            } catch (e) { alert("Erro na API."); }
             finally { loader.style.display = "none"; }
         }
 
