@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NOTAS FINANCEIRAS PRO</title>
+    <title>NOTAS FINANCEIRAS</title>
     
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -60,7 +60,7 @@
                 <tbody id="list-container"></tbody>
             </table>
             
-            <div class="p-4 border-t border-gray-700/50 flex justify-between items-center gap-4">
+            <div class="p-4 border-t border-gray-700/50 flex flex-wrap justify-between items-center gap-4">
                 <button onclick="addRow()" class="text-blue-400 text-xs font-black uppercase hover:text-blue-300 transition-colors">+ Novo Registro</button>
                 
                 <div class="flex items-center gap-2 bg-gray-900/30 p-1 rounded-lg border border-gray-700/50">
@@ -73,7 +73,7 @@
                         <option value="Setembro">SET</option><option value="Outubro">OUT</option>
                         <option value="Novembro">NOV</option><option value="Dezembro">DEZ</option>
                     </select>
-                    <button onclick="importMonthData()" class="bg-blue-600 text-white text-[9px] font-black py-1 px-3 rounded uppercase">OK</button>
+                    <button onclick="importMonthData()" class="bg-blue-600 text-white text-[9px] font-black py-1 px-3 rounded uppercase hover:bg-blue-500">OK</button>
                 </div>
             </div>
         </div>
@@ -93,8 +93,9 @@
             <span id="total-val" class="text-4xl font-mono font-black text-blue-400">R$ 0,00</span>
         </div>
 
-        <p class="text-[8px] text-gray-600 mt-12 text-center uppercase tracking-widest">
-            André Tech Solutions • LGPD Compliance • Google Sheets DB
+        <p class="text-[8px] text-gray-600 mt-12 text-center uppercase tracking-widest leading-relaxed">
+            André Tech Solutions • LGPD Compliance • Google Sheets DB<br>
+            Acesso Privado e Criptografado via HTTPS
         </p>
     </div>
 
@@ -109,32 +110,43 @@
         const loader = document.getElementById('loader');
         
         let autoSaveTimer;
-        let isSyncing = false; // TRAVA DE SEGURANÇA
+        let isSyncing = false; 
 
         monthSelect.value = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"][new Date().getMonth()];
 
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(() => {}); });
+            window.addEventListener('load', () => { 
+                navigator.serviceWorker.register('./sw.js').catch(() => {}); 
+            });
         }
 
         async function fetchData() {
-            isSyncing = true; // Bloqueia salvamentos automáticos enquanto baixa dados
+            isSyncing = true; 
             loader.style.display = "flex";
             try {
-                const res = await fetch(`${GAS_URL}?month=${monthSelect.value}&t=${Date.now()}`);
+                // Forçamos o navegador a não usar cache para ler dados reais do Sheets
+                const res = await fetch(`${GAS_URL}?month=${monthSelect.value}&t=${Date.now()}`, { cache: "no-store" });
                 const data = await res.json();
+                
                 list.innerHTML = '';
                 if (data && data.length > 0) {
-                    data.forEach(item => list.appendChild(createRow(item.desc, item.val, item.status)));
+                    data.forEach(item => {
+                        if(item.desc || item.val) {
+                            list.appendChild(createRow(item.desc, item.val, item.status));
+                        }
+                    });
                 } else {
-                    addRow();
+                    addRow(); 
                 }
                 calculate();
             } catch (e) {
-                console.error(e);
+                console.error("Erro na busca:", e);
+                saveStatus.innerText = "ERRO DE BUSCA";
+                saveStatus.style.opacity = "1";
             } finally {
                 loader.style.display = "none";
-                setTimeout(() => { isSyncing = false; }, 1000); // Libera salvamento após 1s
+                // Delay para garantir que o DOM renderizou antes de permitir saves
+                setTimeout(() => { isSyncing = false; }, 1000);
             }
         }
 
@@ -170,7 +182,7 @@
 
         function planSave() {
             calculate();
-            if (isSyncing) return; // Não salva se estiver carregando dados!
+            if (isSyncing) return; 
 
             clearTimeout(autoSaveTimer);
             autoSaveTimer = setTimeout(sendToSheets, 2000);
@@ -204,8 +216,8 @@
                 if(d || v) items.push({ description: d, value: v, status: s });
             });
 
-            // Se a lista estiver vazia, não vamos apagar o Sheets por acidente
-            if (items.length === 0) return;
+            // Proteção: não envia se a lista estiver vazia para não apagar o Sheets por erro
+            if (items.length === 0 && !isSyncing) return;
 
             saveStatus.style.opacity = "1";
             saveStatus.innerText = "SALVANDO...";
@@ -222,6 +234,7 @@
                 }, 500);
             } catch (e) {
                 saveStatus.innerText = "ERRO";
+                saveStatus.style.color = "#ef4444";
             }
         }
 
@@ -229,12 +242,16 @@
             const sourceMonth = document.getElementById('import-month-select').value;
             if (!sourceMonth || sourceMonth === monthSelect.value) return;
             
+            if (!confirm(`Importar dados de ${sourceMonth}?`)) return;
+
             loader.style.display = "flex";
             try {
                 const res = await fetch(`${GAS_URL}?month=${sourceMonth}&t=${Date.now()}`);
                 const data = await res.json();
                 if (data && data.length > 0) {
-                    data.forEach(item => list.appendChild(createRow(item.desc, item.val, 'PENDENTE')));
+                    data.forEach(item => {
+                        list.appendChild(createRow(item.desc, item.val, 'PENDENTE'));
+                    });
                     planSave();
                 }
             } catch (e) { alert("Erro ao importar"); }
