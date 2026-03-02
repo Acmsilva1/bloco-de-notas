@@ -23,7 +23,7 @@
 </head>
 <body class="p-4 md:p-8">
 
-    <div id="loader">ESTABILIZANDO CENTAVOS...</div>
+    <div id="loader">ESTABILIZANDO CÁLCULOS...</div>
 
     <div class="max-w-xl mx-auto">
         <div class="flex justify-between items-center mb-6">
@@ -57,7 +57,7 @@
                 <tbody id="list-container"></tbody>
             </table>
             <div class="p-4 border-t border-gray-700/50">
-                <button onclick="addRow()" class="text-blue-400 text-xs font-black uppercase hover:text-blue-300 transition-colors">+ Novo Registro</button>
+                <button onclick="addRow()" class="text-blue-400 text-xs font-black uppercase">+ Novo Registro</button>
             </div>
         </div>
 
@@ -97,13 +97,13 @@
                 if (data && data.length > 0) {
                     data.forEach(item => {
                         let val = item.val;
-                        // Se o Google devolver uma data ISO por erro, extraímos apenas o número
+                        // Tratamento para evitar o erro de data ISO string
                         if (typeof val === 'string' && val.includes('T')) val = val.split('-')[0];
                         list.appendChild(createRow(item.desc, val, item.status));
                     });
                 } else { addRow(); }
                 calculate();
-            } catch (e) { console.error("Erro:", e); }
+            } catch (e) { console.error("Erro no fetch:", e); }
             finally { loader.style.display = "none"; setTimeout(() => isSyncing = false, 1000); }
         }
 
@@ -112,16 +112,16 @@
             tr.className = "border-b border-gray-800/50 last:border-0";
             const sClass = s === 'PAGO' ? 'pago' : 'pendente';
             
-            // Tratamento visual: troca ponto por vírgula apenas para exibição amigável
+            // Exibição: Garante que o ponto vire vírgula apenas visualmente
             let displayVal = v.toString().replace('.', ',');
 
             tr.innerHTML = `
-                <td><input type="text" class="row-desc" value="${d}" placeholder="..." oninput="planSave()"></td>
+                <td><input type="text" class="row-desc" value="${d}" oninput="planSave()"></td>
                 <td><input type="text" inputmode="decimal" class="row-val text-right font-mono" value="${displayVal}" placeholder="0,00" oninput="planSave()"></td>
                 <td class="p-2 text-center">
                     <button onclick="toggleStatus(this)" class="status-btn ${sClass}">${s}</button>
                 </td>
-                <td><button onclick="removeRow(this)" class="text-gray-700 hover:text-red-500 font-bold pr-4">×</button></td>
+                <td><button onclick="removeRow(this)" class="text-gray-700 font-bold pr-4">×</button></td>
             `;
             return tr;
         }
@@ -146,7 +146,7 @@
         function calculate() {
             let totalGeral = 0, totalPago = 0, totalPendente = 0;
             document.querySelectorAll('#list-container tr').forEach(tr => {
-                // Sanitização: remove pontos de milhar e troca vírgula por ponto para o JS somar corretamente
+                // Sanitização: remove qualquer ponto de milhar e troca vírgula por ponto decimal
                 let valRaw = tr.querySelector('.row-val').value.replace(/\./g, '').replace(',', '.');
                 const val = parseFloat(valRaw);
                 if(!isNaN(val)) {
@@ -165,9 +165,9 @@
             const items = [];
             document.querySelectorAll('#list-container tr').forEach(tr => {
                 const d = tr.querySelector('.row-desc').value.trim();
-                // Antes de enviar, transformamos em número puro para o Sheets não inventar datas
+                // O segredo: Converter para Number antes de enviar o JSON
                 let vRaw = tr.querySelector('.row-val').value.replace(/\./g, '').replace(',', '.');
-                let vNum = parseFloat(vRaw) || 0;
+                let vNum = Number(parseFloat(vRaw).toFixed(2)) || 0;
                 const s = tr.querySelector('.status-btn').innerText;
                 if(d || vNum !== 0) items.push({ description: d, value: vNum, status: s });
             });
