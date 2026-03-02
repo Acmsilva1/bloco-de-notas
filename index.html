@@ -3,7 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NOTAS FINANCEIRAS PRO</title>
+    <title>NOTAS FINANCEIRAS</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Notas André">
+    <link rel="apple-touch-icon" href="logo.png">
+    <meta name="theme-color" content="#111827">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #111827; color: #e5e7eb; font-family: ui-sans-serif, system-ui, sans-serif; }
@@ -56,7 +64,6 @@
             </div>
         </div>
 
-        <!-- RESUMO FINANCEIRO ANALÍTICO -->
         <div class="grid grid-cols-2 gap-4 mb-6">
             <div class="card p-4 border-l-4 border-l-green-600">
                 <span class="text-[9px] text-gray-400 uppercase font-bold tracking-widest">Já Pago</span>
@@ -72,6 +79,11 @@
             <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Total do Mês</span>
             <span id="total-val" class="text-4xl font-mono font-black text-blue-400">R$ 0,00</span>
         </div>
+
+        <p class="text-[8px] text-gray-600 mt-8 text-center uppercase tracking-tighter">
+            Dados sensíveis processados localmente e armazenados em nuvem privada. 
+            Em conformidade com as diretrizes de privacidade de dados do usuário.
+        </p>
     </div>
 
     <script>
@@ -86,6 +98,15 @@
         let autoSaveTimer;
 
         monthSelect.value = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"][new Date().getMonth()];
+
+        // Registro do Service Worker para habilitar o PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('PWA: Service Worker ativo.'))
+                    .catch(err => console.error('PWA: Erro no registro.', err));
+            });
+        }
 
         async function fetchData() {
             loader.style.display = "flex";
@@ -135,21 +156,16 @@
         }
 
         function calculate() {
-            let totalGeral = 0;
-            let totalPago = 0;
-            let totalPendente = 0;
-
+            let totalGeral = 0; let totalPago = 0; let totalPendente = 0;
             document.querySelectorAll('#list-container tr').forEach(tr => {
                 const val = parseFloat(tr.querySelector('.row-val').value);
                 const status = tr.querySelector('.status-btn').innerText;
-
                 if(!isNaN(val)) {
                     totalGeral += val;
                     if(status === 'PAGO') totalPago += val;
                     else totalPendente += val;
                 }
             });
-
             totalDisp.innerText = totalGeral.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
             totalPagoDisp.innerText = totalPago.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
             totalPendenteDisp.innerText = totalPendente.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
@@ -163,10 +179,8 @@
                 const s = tr.querySelector('.status-btn').innerText;
                 if(d || v) items.push({ description: d, value: v, status: s });
             });
-
             saveStatus.style.opacity = "1";
             saveStatus.innerText = "SALVANDO...";
-            
             try {
                 await fetch(GAS_URL, {
                     method: 'POST',
