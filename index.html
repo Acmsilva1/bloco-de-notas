@@ -7,21 +7,23 @@
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="logo.png">
+    <meta name="theme-color" content="#111827">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #111827; color: #e5e7eb; font-family: ui-sans-serif, system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
         .card { background: #1f2937; border: 1px solid #374151; border-radius: 12px; }
         input { background: transparent; border: none; outline: none; width: 100%; color: white; padding: 12px; font-size: 16px; }
-        .status-btn { font-size: 10px; font-weight: 900; padding: 6px 12px; border-radius: 6px; width: 85px; transition: all 0.2s; border: none; }
+        .status-btn { font-size: 10px; font-weight: 900; padding: 6px 12px; border-radius: 6px; width: 85px; transition: all 0.2s; border: none; cursor: pointer; }
         .pendente { background: #7f1d1d; color: #fecaca; }
         .pago { background: #064e3b; color: #d1fae5; }
-        #loader { position: fixed; inset: 0; background: rgba(17, 24, 39, 0.9); display: none; align-items: center; justify-content: center; z-index: 100; color: #60a5fa; font-weight: bold; }
-        select { background: #111827; color: #60a5fa; border: 1px solid #374151; padding: 8px; border-radius: 8px; font-weight: bold; text-align: center; }
+        #loader { position: fixed; inset: 0; background: rgba(17, 24, 39, 0.9); display: none; align-items: center; justify-content: center; z-index: 100; font-style: italic; color: #60a5fa; font-weight: bold; }
+        select { background: #111827; color: #60a5fa; border: 1px solid #374151; padding: 8px; border-radius: 8px; font-weight: bold; appearance: none; text-align: center; }
     </style>
 </head>
 <body class="p-4 md:p-8">
 
-    <div id="loader">ESTABILIZANDO DADOS...</div>
+    <div id="loader">PROCESSANDO DADOS...</div>
 
     <div class="max-w-xl mx-auto">
         <div class="flex justify-between items-center mb-6">
@@ -33,7 +35,7 @@
                 <option value="Setembro">SETEMBRO</option><option value="Outubro">OUTUBRO</option>
                 <option value="Novembro">NOVEMBRO</option><option value="Dezembro">DEZEMBRO</option>
             </select>
-            <div id="save-status" class="text-[10px] font-black text-green-500 opacity-0 uppercase">Sincronizado</div>
+            <div id="save-status" class="text-[10px] font-black text-green-500 opacity-0 uppercase tracking-widest">Sincronizado</div>
         </div>
 
         <div class="card shadow-2xl mb-6 overflow-hidden">
@@ -43,18 +45,32 @@
                 </thead>
                 <tbody id="list-container"></tbody>
             </table>
-            <div class="p-4 border-t border-gray-700/50">
-                <button onclick="addRow()" class="text-blue-400 text-xs font-black uppercase">+ Novo Registro</button>
+            
+            <div class="p-4 border-t border-gray-700/50 flex flex-wrap justify-between items-center gap-4">
+                <button onclick="addRow()" class="text-blue-400 text-xs font-black uppercase hover:text-blue-300 transition-colors">+ Novo Registro</button>
+                
+                <div class="flex items-center gap-2 bg-gray-900/30 p-1 rounded-lg border border-gray-700/50">
+                    <select id="import-month-select" class="text-[9px] py-1 px-2 border-none bg-transparent outline-none">
+                        <option value="">IMPORTAR DE...</option>
+                        <option value="Janeiro">JAN</option><option value="Fevereiro">FEV</option>
+                        <option value="Março">MAR</option><option value="Abril">ABR</option>
+                        <option value="Maio">MAI</option><option value="Junho">JUN</option>
+                        <option value="Julho">JUL</option><option value="Agosto">AGO</option>
+                        <option value="Setembro">SET</option><option value="Outubro">OUT</option>
+                        <option value="Novembro">NOV</option><option value="Dezembro">DEZ</option>
+                    </select>
+                    <button onclick="importMonthData()" class="bg-blue-600 text-white text-[9px] font-black py-1 px-3 rounded uppercase hover:bg-blue-500 transition-all">OK</button>
+                </div>
             </div>
         </div>
 
         <div class="grid grid-cols-2 gap-4 mb-6">
             <div class="card p-4 border-l-4 border-l-green-600">
-                <span class="text-[9px] text-gray-400 uppercase font-bold">Pago</span>
+                <span class="text-[9px] text-gray-400 uppercase font-bold tracking-widest">Já Pago</span>
                 <div id="total-pago" class="text-xl font-mono font-bold text-green-400">R$ 0,00</div>
             </div>
             <div class="card p-4 border-l-4 border-l-red-600">
-                <span class="text-[9px] text-gray-400 uppercase font-bold">Pendente</span>
+                <span class="text-[9px] text-gray-400 uppercase font-bold tracking-widest">Pendente</span>
                 <div id="total-pendente" class="text-xl font-mono font-bold text-red-400">R$ 0,00</div>
             </div>
         </div>
@@ -84,7 +100,6 @@
                 if (data && data.length > 0) {
                     data.forEach(item => {
                         let val = item.val;
-                        // Se vier lixo de data ISO, tentamos limpar
                         if (typeof val === 'string' && val.includes('T')) val = val.split('-')[0];
                         list.appendChild(createRow(item.desc, val, item.status));
                     });
@@ -98,15 +113,12 @@
             const tr = document.createElement('tr');
             tr.className = "border-b border-gray-800/50 last:border-0";
             const sClass = s === 'PAGO' ? 'pago' : 'pendente';
-            
-            // Força a exibição com vírgula para o usuário
             let displayVal = v.toString().replace('.', ',');
-
             tr.innerHTML = `
                 <td><input type="text" class="row-desc" value="${d}" oninput="planSave()"></td>
                 <td><input type="text" inputmode="decimal" class="row-val text-right font-mono" value="${displayVal}" oninput="planSave()"></td>
                 <td class="p-2 text-center"><button onclick="toggleStatus(this)" class="status-btn ${sClass}">${s}</button></td>
-                <td><button onclick="removeRow(this)" class="text-gray-700 pr-4">×</button></td>
+                <td><button onclick="removeRow(this)" class="text-gray-700 font-bold pr-4">×</button></td>
             `;
             return tr;
         }
@@ -129,7 +141,6 @@
         function calculate() {
             let totalGeral = 0, totalPago = 0, totalPendente = 0;
             document.querySelectorAll('#list-container tr').forEach(tr => {
-                // Limpeza absoluta para o cálculo local
                 let valRaw = tr.querySelector('.row-val').value.replace(/\s/g, '').replace(',', '.');
                 const val = parseFloat(valRaw);
                 if(!isNaN(val)) {
@@ -149,27 +160,42 @@
             document.querySelectorAll('#list-container tr').forEach(tr => {
                 const d = tr.querySelector('.row-desc').value.trim();
                 let vRaw = tr.querySelector('.row-val').value.replace(/\s/g, '').replace(',', '.');
-                let vNum = parseFloat(vRaw) || 0;
+                let vNum = Number(parseFloat(vRaw).toFixed(2)) || 0;
                 if(d || vNum !== 0) items.push({ description: d, value: vNum, status: tr.querySelector('.status-btn').innerText });
             });
-
             if (items.length === 0) return;
-            saveStatus.style.opacity = "1";
-            saveStatus.innerText = "SALVANDO...";
-            
+            saveStatus.style.opacity = "1"; saveStatus.innerText = "SALVANDO...";
             try {
-                // Truque DevOps: Enviamos como string formatada para "enganar" o Sheets se ele for teimoso
-                await fetch(GAS_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    body: JSON.stringify({ month: monthSelect.value, items: items })
-                });
-                setTimeout(() => {
-                    saveStatus.innerText = "SINCRONIZADO";
-                    setTimeout(() => saveStatus.style.opacity = "0", 2000);
-                }, 500);
+                await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ month: monthSelect.value, items: items }) });
+                setTimeout(() => { saveStatus.innerText = "SINCRONIZADO"; setTimeout(() => saveStatus.style.opacity = "0", 2000); }, 500);
             } catch (e) { saveStatus.innerText = "ERRO"; }
         }
+
+        async function importMonthData() {
+            const sourceMonth = document.getElementById('import-month-select').value;
+            if (!sourceMonth || sourceMonth === monthSelect.value) return;
+            if (!confirm(`Importar registros de ${sourceMonth} para ${monthSelect.value}?`)) return;
+
+            loader.style.display = "flex";
+            try {
+                const res = await fetch(`${GAS_URL}?month=${sourceMonth}&t=${Date.now()}`, { cache: 'no-cache' });
+                const data = await res.json();
+                if (data && data.length > 0) {
+                    data.forEach(item => {
+                        let val = item.val;
+                        if (typeof val === 'string' && val.includes('T')) val = val.split('-')[0];
+                        // Importamos tudo como PENDENTE para o novo mês
+                        list.appendChild(createRow(item.desc, val, 'PENDENTE'));
+                    });
+                    planSave();
+                } else { alert("Nenhum dado encontrado no mês de origem."); }
+            } catch (e) { alert("Erro ao importar."); }
+            finally { 
+                loader.style.display = "none"; 
+                document.getElementById('import-month-select').value = "";
+            }
+        }
+
         window.onload = fetchData;
     </script>
 </body>
