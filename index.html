@@ -4,68 +4,186 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>NOTAS FINANCEIRAS PRO</title>
-    
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#111827">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/552/552791.png">
-
-    <link rel="manifest" href='data:application/manifest+json,{"name":"Financeiro André","short_name":"Notas","start_url":"/","display":"standalone","background_color":"#111827","theme_color":"#111827","icons":[{"src":"https://cdn-icons-png.flaticon.com/512/552/552791.png","sizes":"512x512","type":"image/png"}]}'>
-
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #111827; color: #e5e7eb; font-family: ui-sans-serif, sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background-color: #111827; color: #e5e7eb; font-family: ui-sans-serif, system-ui, sans-serif; }
         .card { background: #1f2937; border: 1px solid #374151; border-radius: 12px; }
-        .status-btn { font-size: 10px; font-weight: 900; padding: 6px 12px; border-radius: 6px; width: 85px; }
+        input { background: transparent; border: none; outline: none; width: 100%; color: white; padding: 12px; font-size: 16px; }
+        .status-btn { font-size: 10px; font-weight: 900; padding: 6px 12px; border-radius: 6px; width: 85px; transition: all 0.2s; }
         .pendente { background: #7f1d1d; color: #fecaca; }
         .pago { background: #064e3b; color: #d1fae5; }
-        #loader { position: fixed; inset: 0; background: #111827; display: none; align-items: center; justify-content: center; z-index: 200; color: #60a5fa; }
+        #loader { position: fixed; inset: 0; background: rgba(17, 24, 39, 0.9); display: none; align-items: center; justify-content: center; z-index: 100; font-style: italic; color: #60a5fa; }
+        select { background: #111827; color: #60a5fa; border: 1px solid #374151; padding: 8px; border-radius: 8px; font-weight: bold; appearance: none; text-align: center; }
     </style>
 </head>
-<body class="p-4">
+<body class="p-4 md:p-8">
 
-    <div id="loader">SINCRONIZANDO...</div>
+    <div id="loader">SINCRONIZANDO GAVETAS...</div>
 
     <div class="max-w-xl mx-auto">
         <div class="flex justify-between items-center mb-6">
-            <select id="month-select" onchange="fetchData()" class="bg-transparent text-blue-400 font-bold border-none outline-none">
+            <select id="month-select" onchange="fetchData()">
                 <option value="Janeiro">JANEIRO</option>
-                </select>
-            <div id="save-status" class="text-[10px] font-black text-green-500 opacity-0 uppercase">Sincronizado</div>
+                <option value="Fevereiro">FEVEREIRO</option>
+                <option value="Março">MARÇO</option>
+                <option value="Abril">ABRIL</option>
+                <option value="Maio">MAIO</option>
+                <option value="Junho">JUNHO</option>
+                <option value="Julho">JULHO</option>
+                <option value="Agosto">AGOSTO</option>
+                <option value="Setembro">SETEMBRO</option>
+                <option value="Outubro">OUTUBRO</option>
+                <option value="Novembro">NOVEMBRO</option>
+                <option value="Dezembro">DEZEMBRO</option>
+            </select>
+            <div id="save-status" class="text-[10px] font-black text-green-500 opacity-0 uppercase tracking-widest">Sincronizado</div>
         </div>
 
-        <div class="card shadow-2xl mb-6 overflow-hidden">
-            <table class="w-full text-sm">
+        <div class="card shadow-2xl mb-6">
+            <table class="w-full">
+                <thead class="bg-gray-900/50 text-[10px] text-gray-500 uppercase">
+                    <tr>
+                        <th class="p-4 text-left">Descrição</th>
+                        <th class="p-4 text-right w-28">Valor</th>
+                        <th class="p-4 text-center w-24">Status</th>
+                        <th class="w-10"></th>
+                    </tr>
+                </thead>
                 <tbody id="list-container"></tbody>
             </table>
-            <div class="p-4 border-t border-gray-700/50 flex justify-between items-center bg-gray-800/30">
-                <button onclick="addRow()" class="text-blue-400 text-xs font-black uppercase">+ Novo</button>
-                <button onclick="openImportModal()" class="text-purple-400 text-[10px] font-black uppercase">📥 Importar</button>
+            <div class="p-4 border-t border-gray-700/50">
+                <button onclick="addRow()" class="text-blue-400 text-xs font-black uppercase hover:text-blue-300 transition-colors">+ Novo Registro</button>
             </div>
         </div>
 
-        <div id="total-val" class="text-right text-4xl font-mono font-black text-blue-400">R$ 0,00</div>
+        <!-- RESUMO FINANCEIRO ANALÍTICO -->
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div class="card p-4 border-l-4 border-l-green-600">
+                <span class="text-[9px] text-gray-400 uppercase font-bold tracking-widest">Já Pago</span>
+                <div id="total-pago" class="text-xl font-mono font-bold text-green-400">R$ 0,00</div>
+            </div>
+            <div class="card p-4 border-l-4 border-l-red-600">
+                <span class="text-[9px] text-gray-400 uppercase font-bold tracking-widest">Pendente</span>
+                <div id="total-pendente" class="text-xl font-mono font-bold text-red-400">R$ 0,00</div>
+            </div>
+        </div>
+
+        <div class="flex flex-col items-end px-2">
+            <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Total do Mês</span>
+            <span id="total-val" class="text-4xl font-mono font-black text-blue-400">R$ 0,00</span>
+        </div>
     </div>
 
     <script>
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbzRmEGyiMFnAAAuLQl9QDdi2JYN4q_v2puE0YX7l8eIKtuE81UvEcj7YDRQlscASqG3yg/exec"; // ATUALIZE SEMPRE APÓS NOVO DEPLOY
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbzRmEGyiMFnAAAuLQl9QDdi2JYN4q_v2puE0YX7l8eIKtuE81UvEcj7YDRQlscASqG3yg/exec";
+        const list = document.getElementById('list-container');
+        const monthSelect = document.getElementById('month-select');
+        const totalDisp = document.getElementById('total-val');
+        const totalPagoDisp = document.getElementById('total-pago');
+        const totalPendenteDisp = document.getElementById('total-pendente');
+        const saveStatus = document.getElementById('save-status');
+        const loader = document.getElementById('loader');
+        let autoSaveTimer;
 
-        // SERVICE WORKER REAL: Essencial para o botão de instalar aparecer
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                const swCode = `
-                    self.addEventListener('install', e => self.skipWaiting());
-                    self.addEventListener('fetch', e => e.respondWith(fetch(e.request)));
-                `;
-                const blob = new Blob([swCode], { type: 'text/javascript' });
-                navigator.serviceWorker.register(URL.createObjectURL(blob))
-                    .then(() => console.log("PWA Pronto"))
-                    .catch(() => console.log("Erro PWA"));
-            });
+        monthSelect.value = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"][new Date().getMonth()];
+
+        async function fetchData() {
+            loader.style.display = "flex";
+            try {
+                const res = await fetch(`${GAS_URL}?month=${monthSelect.value}&t=${Date.now()}`);
+                const data = await res.json();
+                list.innerHTML = '';
+                if (data && data.length > 0) {
+                    data.forEach(item => list.appendChild(createRow(item.desc, item.val, item.status)));
+                } else {
+                    addRow();
+                }
+                calculate();
+            } catch (e) { console.error("Erro de busca:", e); }
+            finally { loader.style.display = "none"; }
         }
 
-        // ... (Suas funções fetchData, addRow, etc. continuam aqui)
-        // Lembre-se de usar a lógica de salvar e buscar que já funciona.
+        function createRow(d = '', v = '', s = 'PENDENTE') {
+            const tr = document.createElement('tr');
+            tr.className = "border-b border-gray-800/50 last:border-0";
+            const sClass = s === 'PAGO' ? 'pago' : 'pendente';
+            tr.innerHTML = `
+                <td><input type="text" class="row-desc" value="${d}" placeholder="Ex: Aluguel" oninput="planSave()"></td>
+                <td><input type="number" step="0.01" class="row-val text-right" value="${v}" placeholder="0.00" oninput="planSave()"></td>
+                <td class="p-2 text-center">
+                    <button onclick="toggleStatus(this)" class="status-btn ${sClass}">${s}</button>
+                </td>
+                <td><button onclick="removeRow(this)" class="text-gray-700 hover:text-red-500 font-bold pr-4">×</button></td>
+            `;
+            return tr;
+        }
+
+        function addRow() { list.appendChild(createRow()); }
+        function removeRow(btn) { btn.closest('tr').remove(); if(list.children.length === 0) addRow(); planSave(); }
+        
+        function toggleStatus(btn) {
+            const isPendente = btn.innerText === 'PENDENTE';
+            btn.innerText = isPendente ? 'PAGO' : 'PENDENTE';
+            btn.className = `status-btn ${isPendente ? 'pago' : 'pendente'}`;
+            planSave();
+        }
+
+        function planSave() {
+            calculate();
+            clearTimeout(autoSaveTimer);
+            autoSaveTimer = setTimeout(sendToSheets, 2000);
+        }
+
+        function calculate() {
+            let totalGeral = 0;
+            let totalPago = 0;
+            let totalPendente = 0;
+
+            document.querySelectorAll('#list-container tr').forEach(tr => {
+                const val = parseFloat(tr.querySelector('.row-val').value);
+                const status = tr.querySelector('.status-btn').innerText;
+
+                if(!isNaN(val)) {
+                    totalGeral += val;
+                    if(status === 'PAGO') totalPago += val;
+                    else totalPendente += val;
+                }
+            });
+
+            totalDisp.innerText = totalGeral.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+            totalPagoDisp.innerText = totalPago.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+            totalPendenteDisp.innerText = totalPendente.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+        }
+
+        async function sendToSheets() {
+            const items = [];
+            document.querySelectorAll('#list-container tr').forEach(tr => {
+                const d = tr.querySelector('.row-desc').value.trim();
+                const v = tr.querySelector('.row-val').value;
+                const s = tr.querySelector('.status-btn').innerText;
+                if(d || v) items.push({ description: d, value: v, status: s });
+            });
+
+            saveStatus.style.opacity = "1";
+            saveStatus.innerText = "SALVANDO...";
+            
+            try {
+                await fetch(GAS_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: JSON.stringify({ month: monthSelect.value, items: items })
+                });
+                setTimeout(() => {
+                    saveStatus.innerText = "SINCRONIZADO";
+                    setTimeout(() => saveStatus.style.opacity = "0", 2000);
+                }, 500);
+            } catch (e) {
+                saveStatus.innerText = "ERRO NA NUVEM";
+                saveStatus.style.color = "#ef4444";
+            }
+        }
+
+        window.onload = fetchData;
     </script>
 </body>
 </html>
