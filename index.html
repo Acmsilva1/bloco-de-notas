@@ -7,52 +7,39 @@
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="logo.png">
-    <meta name="theme-color" content="#111827">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #111827; color: #e5e7eb; font-family: ui-sans-serif, system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
         .card { background: #1f2937; border: 1px solid #374151; border-radius: 12px; }
         input { background: transparent; border: none; outline: none; width: 100%; color: white; padding: 12px; font-size: 16px; }
-        .status-btn { font-size: 10px; font-weight: 900; padding: 6px 12px; border-radius: 6px; width: 85px; transition: all 0.2s; border: none; cursor: pointer; }
+        .status-btn { font-size: 10px; font-weight: 900; padding: 6px 12px; border-radius: 6px; width: 85px; transition: all 0.2s; border: none; }
         .pendente { background: #7f1d1d; color: #fecaca; }
         .pago { background: #064e3b; color: #d1fae5; }
-        #loader { position: fixed; inset: 0; background: rgba(17, 24, 39, 0.9); display: none; align-items: center; justify-content: center; z-index: 100; font-style: italic; color: #60a5fa; font-weight: bold; }
-        select { background: #111827; color: #60a5fa; border: 1px solid #374151; padding: 8px; border-radius: 8px; font-weight: bold; appearance: none; text-align: center; }
+        #loader { position: fixed; inset: 0; background: rgba(17, 24, 39, 0.9); display: none; align-items: center; justify-content: center; z-index: 100; color: #60a5fa; font-weight: bold; }
+        select { background: #111827; color: #60a5fa; border: 1px solid #374151; padding: 8px; border-radius: 8px; font-weight: bold; text-align: center; }
     </style>
 </head>
 <body class="p-4 md:p-8">
 
-    <div id="loader">ESTABILIZANDO CÁLCULOS...</div>
+    <div id="loader">ESTABILIZANDO DADOS...</div>
 
     <div class="max-w-xl mx-auto">
         <div class="flex justify-between items-center mb-6">
             <select id="month-select" onchange="fetchData()">
-                <option value="Janeiro">JANEIRO</option>
-                <option value="Fevereiro">FEVEREIRO</option>
-                <option value="Março">MARÇO</option>
-                <option value="Abril">ABRIL</option>
-                <option value="Maio">MAIO</option>
-                <option value="Junho">JUNHO</option>
-                <option value="Julho">JULHO</option>
-                <option value="Agosto">AGOSTO</option>
-                <option value="Setembro">SETEMBRO</option>
-                <option value="Outubro">OUTUBRO</option>
-                <option value="Novembro">NOVEMBRO</option>
-                <option value="Dezembro">DEZEMBRO</option>
+                <option value="Janeiro">JANEIRO</option><option value="Fevereiro">FEVEREIRO</option>
+                <option value="Março">MARÇO</option><option value="Abril">ABRIL</option>
+                <option value="Maio">MAIO</option><option value="Junho">JUNHO</option>
+                <option value="Julho">JULHO</option><option value="Agosto">AGOSTO</option>
+                <option value="Setembro">SETEMBRO</option><option value="Outubro">OUTUBRO</option>
+                <option value="Novembro">NOVEMBRO</option><option value="Dezembro">DEZEMBRO</option>
             </select>
-            <div id="save-status" class="text-[10px] font-black text-green-500 opacity-0 uppercase tracking-widest">Sincronizado</div>
+            <div id="save-status" class="text-[10px] font-black text-green-500 opacity-0 uppercase">Sincronizado</div>
         </div>
 
         <div class="card shadow-2xl mb-6 overflow-hidden">
             <table class="w-full">
                 <thead class="bg-gray-900/50 text-[10px] text-gray-500 uppercase">
-                    <tr>
-                        <th class="p-4 text-left">Descrição</th>
-                        <th class="p-4 text-right w-28">Valor</th>
-                        <th class="p-4 text-center w-24">Status</th>
-                        <th class="w-10"></th>
-                    </tr>
+                    <tr><th class="p-4 text-left">Descrição</th><th class="p-4 text-right w-28">Valor</th><th class="p-4 text-center w-24">Status</th><th class="w-10"></th></tr>
                 </thead>
                 <tbody id="list-container"></tbody>
             </table>
@@ -63,11 +50,11 @@
 
         <div class="grid grid-cols-2 gap-4 mb-6">
             <div class="card p-4 border-l-4 border-l-green-600">
-                <span class="text-[9px] text-gray-400 uppercase font-bold tracking-widest">Já Pago</span>
+                <span class="text-[9px] text-gray-400 uppercase font-bold">Pago</span>
                 <div id="total-pago" class="text-xl font-mono font-bold text-green-400">R$ 0,00</div>
             </div>
             <div class="card p-4 border-l-4 border-l-red-600">
-                <span class="text-[9px] text-gray-400 uppercase font-bold tracking-widest">Pendente</span>
+                <span class="text-[9px] text-gray-400 uppercase font-bold">Pendente</span>
                 <div id="total-pendente" class="text-xl font-mono font-bold text-red-400">R$ 0,00</div>
             </div>
         </div>
@@ -97,13 +84,13 @@
                 if (data && data.length > 0) {
                     data.forEach(item => {
                         let val = item.val;
-                        // Tratamento para evitar o erro de data ISO string
+                        // Se vier lixo de data ISO, tentamos limpar
                         if (typeof val === 'string' && val.includes('T')) val = val.split('-')[0];
                         list.appendChild(createRow(item.desc, val, item.status));
                     });
                 } else { addRow(); }
                 calculate();
-            } catch (e) { console.error("Erro no fetch:", e); }
+            } catch (e) { console.error(e); }
             finally { loader.style.display = "none"; setTimeout(() => isSyncing = false, 1000); }
         }
 
@@ -112,27 +99,23 @@
             tr.className = "border-b border-gray-800/50 last:border-0";
             const sClass = s === 'PAGO' ? 'pago' : 'pendente';
             
-            // Exibição: Garante que o ponto vire vírgula apenas visualmente
+            // Força a exibição com vírgula para o usuário
             let displayVal = v.toString().replace('.', ',');
 
             tr.innerHTML = `
                 <td><input type="text" class="row-desc" value="${d}" oninput="planSave()"></td>
-                <td><input type="text" inputmode="decimal" class="row-val text-right font-mono" value="${displayVal}" placeholder="0,00" oninput="planSave()"></td>
-                <td class="p-2 text-center">
-                    <button onclick="toggleStatus(this)" class="status-btn ${sClass}">${s}</button>
-                </td>
-                <td><button onclick="removeRow(this)" class="text-gray-700 font-bold pr-4">×</button></td>
+                <td><input type="text" inputmode="decimal" class="row-val text-right font-mono" value="${displayVal}" oninput="planSave()"></td>
+                <td class="p-2 text-center"><button onclick="toggleStatus(this)" class="status-btn ${sClass}">${s}</button></td>
+                <td><button onclick="removeRow(this)" class="text-gray-700 pr-4">×</button></td>
             `;
             return tr;
         }
 
         function addRow() { list.appendChild(createRow()); }
         function removeRow(btn) { btn.closest('tr').remove(); if(list.children.length === 0) addRow(); planSave(); }
-        
         function toggleStatus(btn) {
-            const isPendente = btn.innerText === 'PENDENTE';
-            btn.innerText = isPendente ? 'PAGO' : 'PENDENTE';
-            btn.className = `status-btn ${isPendente ? 'pago' : 'pendente'}`;
+            btn.innerText = btn.innerText === 'PENDENTE' ? 'PAGO' : 'PENDENTE';
+            btn.className = `status-btn ${btn.innerText === 'PAGO' ? 'pago' : 'pendente'}`;
             planSave();
         }
 
@@ -146,8 +129,8 @@
         function calculate() {
             let totalGeral = 0, totalPago = 0, totalPendente = 0;
             document.querySelectorAll('#list-container tr').forEach(tr => {
-                // Sanitização: remove qualquer ponto de milhar e troca vírgula por ponto decimal
-                let valRaw = tr.querySelector('.row-val').value.replace(/\./g, '').replace(',', '.');
+                // Limpeza absoluta para o cálculo local
+                let valRaw = tr.querySelector('.row-val').value.replace(/\s/g, '').replace(',', '.');
                 const val = parseFloat(valRaw);
                 if(!isNaN(val)) {
                     totalGeral += val;
@@ -165,11 +148,9 @@
             const items = [];
             document.querySelectorAll('#list-container tr').forEach(tr => {
                 const d = tr.querySelector('.row-desc').value.trim();
-                // O segredo: Converter para Number antes de enviar o JSON
-                let vRaw = tr.querySelector('.row-val').value.replace(/\./g, '').replace(',', '.');
-                let vNum = Number(parseFloat(vRaw).toFixed(2)) || 0;
-                const s = tr.querySelector('.status-btn').innerText;
-                if(d || vNum !== 0) items.push({ description: d, value: vNum, status: s });
+                let vRaw = tr.querySelector('.row-val').value.replace(/\s/g, '').replace(',', '.');
+                let vNum = parseFloat(vRaw) || 0;
+                if(d || vNum !== 0) items.push({ description: d, value: vNum, status: tr.querySelector('.status-btn').innerText });
             });
 
             if (items.length === 0) return;
@@ -177,6 +158,7 @@
             saveStatus.innerText = "SALVANDO...";
             
             try {
+                // Truque DevOps: Enviamos como string formatada para "enganar" o Sheets se ele for teimoso
                 await fetch(GAS_URL, {
                     method: 'POST',
                     mode: 'no-cors',
@@ -188,7 +170,6 @@
                 }, 500);
             } catch (e) { saveStatus.innerText = "ERRO"; }
         }
-
         window.onload = fetchData;
     </script>
 </body>
