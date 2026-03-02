@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NOTAS FINANCEIRAS</title>
+    <title>NOTAS FINANCEIRAS PRO</title>
     
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -99,7 +99,7 @@
     </div>
 
     <script>
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbzRmEGyiMFnAAAuLQl9QDdi2JYN4q_v2puE0YX7l8eIKtuE81UvEcj7YDRQlscASqG3yg/exec";
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbzRmEGyiMFnAAAuLQl9QDdi2JYN4q_v2puE0YX7l8eIKtuE81UvEcj7YDRQlscASqG3yg/exec"; 
         const list = document.getElementById('list-container');
         const monthSelect = document.getElementById('month-select');
         const totalDisp = document.getElementById('total-val');
@@ -111,10 +111,8 @@
         let autoSaveTimer;
         let isSyncing = false; 
 
-        // Inicia com o mês atual
         monthSelect.value = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"][new Date().getMonth()];
 
-        // Registro do Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => { 
                 navigator.serviceWorker.register('./sw.js').catch(() => {}); 
@@ -122,13 +120,13 @@
         }
 
         async function fetchData() {
-            isSyncing = true; // TRAVA: Bloqueia qualquer salvamento durante o download
+            isSyncing = true; 
             loader.style.display = "flex";
             try {
-                // cache: 'no-cache' força a rede, ignorando o lixo do Service Worker
+                // cache: 'reload' força a busca na rede ignorando o cache local do PWA
                 const res = await fetch(`${GAS_URL}?month=${monthSelect.value}&t=${Date.now()}`, {
                     method: 'GET',
-                    cache: 'no-cache'
+                    cache: 'reload'
                 });
                 const data = await res.json();
                 
@@ -149,7 +147,7 @@
                 saveStatus.style.opacity = "1";
             } finally {
                 loader.style.display = "none";
-                // Delay de segurança para garantir que os inputs foram renderizados antes de liberar o save
+                // Delay para garantir que o DOM estabilizou
                 setTimeout(() => { isSyncing = false; }, 1000);
             }
         }
@@ -186,7 +184,7 @@
 
         function planSave() {
             calculate();
-            if (isSyncing) return; // Não salva se o download de dados ainda estiver ocorrendo
+            if (isSyncing) return; 
 
             clearTimeout(autoSaveTimer);
             autoSaveTimer = setTimeout(sendToSheets, 2000);
@@ -220,8 +218,7 @@
                 if(d || v) items.push({ description: d, value: v, status: s });
             });
 
-            // PROTEÇÃO CRÍTICA: Se a lista estiver vazia e não estivermos sincronizando,
-            // abortamos para evitar que o GAS limpe a planilha por erro de leitura do front.
+            // PROTEÇÃO: Não envia lista vazia se o app ainda não carregou os dados
             if (items.length === 0) return;
 
             saveStatus.style.opacity = "1";
@@ -239,7 +236,6 @@
                 }, 500);
             } catch (e) {
                 saveStatus.innerText = "ERRO";
-                saveStatus.style.color = "#ef4444";
             }
         }
 
@@ -257,7 +253,7 @@
                     data.forEach(item => {
                         list.appendChild(createRow(item.desc, item.val, 'PENDENTE'));
                     });
-                    planSave(); // Salva os novos dados importados no mês atual
+                    planSave();
                 }
             } catch (e) { alert("Erro ao importar"); }
             finally { 
