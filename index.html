@@ -3,15 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NOTAS FINANCEIRAS PRO</title>
-    
+    <title>NOTAS FINANCEIRAS</title>
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Notas André">
     <link rel="apple-touch-icon" href="logo.png">
     <meta name="theme-color" content="#111827">
-
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #111827; color: #e5e7eb; font-family: ui-sans-serif, system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
@@ -26,7 +23,7 @@
 </head>
 <body class="p-4 md:p-8">
 
-    <div id="loader">SINCRONIZANDO GAVETAS...</div>
+    <div id="loader">AJUSTANDO O FLUXO TEMPORAL...</div>
 
     <div class="max-w-xl mx-auto">
         <div class="flex justify-between items-center mb-6">
@@ -59,25 +56,23 @@
                 </thead>
                 <tbody id="list-container"></tbody>
             </table>
-            
-            <div class="p-4 border-t border-gray-700/50 flex justify-between items-center">
-                <button onclick="addRow()" class="text-blue-400 text-xs font-black uppercase hover:text-blue-300 transition-colors">+ Novo Registro</button>
+            <div class="p-4 border-t border-gray-700/50">
+                <button onclick="addRow()" class="text-blue-400 text-xs font-black uppercase">+ Novo Registro</button>
             </div>
         </div>
 
         <div class="grid grid-cols-2 gap-4 mb-6">
             <div class="card p-4 border-l-4 border-l-green-600">
-                <span class="text-[9px] text-gray-400 uppercase font-bold tracking-widest">Já Pago</span>
+                <span class="text-[9px] text-gray-400 uppercase font-bold">Pago</span>
                 <div id="total-pago" class="text-xl font-mono font-bold text-green-400">R$ 0,00</div>
             </div>
             <div class="card p-4 border-l-4 border-l-red-600">
-                <span class="text-[9px] text-gray-400 uppercase font-bold tracking-widest">Pendente</span>
+                <span class="text-[9px] text-gray-400 uppercase font-bold">Pendente</span>
                 <div id="total-pendente" class="text-xl font-mono font-bold text-red-400">R$ 0,00</div>
             </div>
         </div>
 
         <div class="flex flex-col items-end px-2">
-            <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Total do Mês</span>
             <span id="total-val" class="text-4xl font-mono font-black text-blue-400">R$ 0,00</span>
         </div>
     </div>
@@ -86,25 +81,14 @@
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzRmEGyiMFnAAAuLQl9QDdi2JYN4q_v2puE0YX7l8eIKtuE81UvEcj7YDRQlscASqG3yg/exec";
         const list = document.getElementById('list-container');
         const monthSelect = document.getElementById('month-select');
-        const totalDisp = document.getElementById('total-val');
-        const totalPagoDisp = document.getElementById('total-pago');
-        const totalPendenteDisp = document.getElementById('total-pendente');
         const saveStatus = document.getElementById('save-status');
         const loader = document.getElementById('loader');
-        
-        let autoSaveTimer;
-        let isSyncing = false; 
+        let autoSaveTimer, isSyncing = false;
 
         monthSelect.value = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"][new Date().getMonth()];
 
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => { 
-                navigator.serviceWorker.register('./sw.js').catch(() => {}); 
-            });
-        }
-
         async function fetchData() {
-            isSyncing = true; 
+            isSyncing = true;
             loader.style.display = "flex";
             try {
                 const res = await fetch(`${GAS_URL}?month=${monthSelect.value}&t=${Date.now()}`, { cache: 'no-cache' });
@@ -112,57 +96,41 @@
                 list.innerHTML = '';
                 if (data && data.length > 0) {
                     data.forEach(item => {
-                        // Limpeza de string para garantir que o ponto decimal funcione no JS
-                        let cleanVal = item.val;
-                        if (typeof cleanVal === 'string') cleanVal = cleanVal.replace(',', '.');
-                        list.appendChild(createRow(item.desc, cleanVal, item.status));
+                        // Se o Google mandar data (ISO string), tentamos extrair o número ou resetar
+                        let val = item.val;
+                        if (typeof val === 'string' && val.includes('T')) val = parseFloat(val.split('-')[0]) || 0;
+                        list.appendChild(createRow(item.desc, val, item.status));
                     });
-                } else {
-                    addRow();
-                }
+                } else { addRow(); }
                 calculate();
-            } catch (e) { console.error("Erro de busca:", e); }
-            finally { 
-                loader.style.display = "none";
-                setTimeout(() => { isSyncing = false; }, 1000); 
-            }
+            } catch (e) { console.error(e); }
+            finally { loader.style.display = "none"; setTimeout(() => isSyncing = false, 1000); }
         }
 
         function createRow(d = '', v = '', s = 'PENDENTE') {
             const tr = document.createElement('tr');
-            tr.className = "border-b border-gray-800/50 last:border-0";
+            tr.className = "border-b border-gray-800/50";
             const sClass = s === 'PAGO' ? 'pago' : 'pendente';
-            
-            // Mudamos para type="text" + inputmode="decimal" para aceitar vírgula no teclado mobile sem bugar o valor
             tr.innerHTML = `
-                <td><input type="text" class="row-desc" value="${d}" placeholder="..." oninput="planSave()"></td>
-                <td><input type="text" inputmode="decimal" class="row-val text-right font-mono" value="${v}" placeholder="0,00" oninput="planSave()"></td>
-                <td class="p-2 text-center">
-                    <button onclick="toggleStatus(this)" class="status-btn ${sClass}">${s}</button>
-                </td>
-                <td><button onclick="removeRow(this)" class="text-gray-700 hover:text-red-500 font-bold pr-4">×</button></td>
+                <td><input type="text" class="row-desc" value="${d}" oninput="planSave()"></td>
+                <td><input type="text" inputmode="decimal" class="row-val text-right font-mono" value="${v}" oninput="planSave()"></td>
+                <td class="p-2 text-center"><button onclick="toggleStatus(this)" class="status-btn ${sClass}">${s}</button></td>
+                <td><button onclick="removeRow(this)" class="text-gray-700 pr-4">×</button></td>
             `;
             return tr;
         }
 
         function addRow() { list.appendChild(createRow()); }
-        
-        function removeRow(btn) { 
-            btn.closest('tr').remove(); 
-            if(list.children.length === 0) addRow(); 
-            planSave(); 
-        }
-        
+        function removeRow(btn) { btn.closest('tr').remove(); if(list.children.length === 0) addRow(); planSave(); }
         function toggleStatus(btn) {
-            const isPendente = btn.innerText === 'PENDENTE';
-            btn.innerText = isPendente ? 'PAGO' : 'PENDENTE';
-            btn.className = `status-btn ${isPendente ? 'pago' : 'pendente'}`;
+            btn.innerText = btn.innerText === 'PENDENTE' ? 'PAGO' : 'PENDENTE';
+            btn.className = `status-btn ${btn.innerText === 'PAGO' ? 'pago' : 'pendente'}`;
             planSave();
         }
 
         function planSave() {
             calculate();
-            if (isSyncing) return; 
+            if (isSyncing) return;
             clearTimeout(autoSaveTimer);
             autoSaveTimer = setTimeout(sendToSheets, 2000);
         }
@@ -170,18 +138,16 @@
         function calculate() {
             let totalGeral = 0, totalPago = 0, totalPendente = 0;
             document.querySelectorAll('#list-container tr').forEach(tr => {
-                let valRaw = tr.querySelector('.row-val').value.replace(',', '.');
-                const val = parseFloat(valRaw);
-                const status = tr.querySelector('.status-btn').innerText;
-                if(!isNaN(val)) {
-                    totalGeral += val;
-                    if(status === 'PAGO') totalPago += val;
-                    else totalPendente += val;
+                let v = parseFloat(tr.querySelector('.row-val').value.replace(',', '.'));
+                if(!isNaN(v)) {
+                    totalGeral += v;
+                    if(tr.querySelector('.status-btn').innerText === 'PAGO') totalPago += v;
+                    else totalPendente += v;
                 }
             });
-            totalDisp.innerText = totalGeral.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
-            totalPagoDisp.innerText = totalPago.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
-            totalPendenteDisp.innerText = totalPendente.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+            document.getElementById('total-val').innerText = totalGeral.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+            document.getElementById('total-pago').innerText = totalPago.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+            document.getElementById('total-pendente').innerText = totalPendente.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
         }
 
         async function sendToSheets() {
@@ -190,25 +156,14 @@
             document.querySelectorAll('#list-container tr').forEach(tr => {
                 const d = tr.querySelector('.row-desc').value.trim();
                 let v = tr.querySelector('.row-val').value.replace(',', '.');
-                const s = tr.querySelector('.status-btn').innerText;
-                if(d || v) items.push({ description: d, value: v, status: s });
+                if (d || v) items.push({ description: d, value: parseFloat(v) || 0, status: tr.querySelector('.status-btn').innerText });
             });
-
             if (items.length === 0) return;
-
             saveStatus.style.opacity = "1";
             saveStatus.innerText = "SALVANDO...";
-            
             try {
-                await fetch(GAS_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    body: JSON.stringify({ month: monthSelect.value, items: items })
-                });
-                setTimeout(() => {
-                    saveStatus.innerText = "SINCRONIZADO";
-                    setTimeout(() => saveStatus.style.opacity = "0", 2000);
-                }, 500);
+                await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ month: monthSelect.value, items: items }) });
+                setTimeout(() => { saveStatus.innerText = "SINCRONIZADO"; setTimeout(() => saveStatus.style.opacity = "0", 2000); }, 500);
             } catch (e) { saveStatus.innerText = "ERRO"; }
         }
 
