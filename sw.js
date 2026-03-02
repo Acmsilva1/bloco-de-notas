@@ -1,4 +1,4 @@
-const CACHE_NAME = 'notas-v8';
+const CACHE_NAME = 'notas-v9';
 const ASSETS = [
   './',
   './index.html',
