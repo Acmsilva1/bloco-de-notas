@@ -26,7 +26,7 @@
 </head>
 <body class="p-4 md:p-8">
 
-    <div id="loader">CONECTANDO AO SHEETS...</div>
+    <div id="loader">SINCRONIZANDO COM A NUVEM...</div>
 
     <div class="max-w-xl mx-auto">
         <div class="flex justify-between items-center mb-6">
@@ -73,7 +73,7 @@
                         <option value="Setembro">SET</option><option value="Outubro">OUT</option>
                         <option value="Novembro">NOV</option><option value="Dezembro">DEZ</option>
                     </select>
-                    <button onclick="importMonthData()" class="bg-blue-600 text-white text-[9px] font-black py-1 px-3 rounded uppercase hover:bg-blue-500">OK</button>
+                    <button onclick="importMonthData()" class="bg-blue-600 text-white text-[9px] font-black py-1 px-3 rounded uppercase hover:bg-blue-500 transition-all">OK</button>
                 </div>
             </div>
         </div>
@@ -94,8 +94,7 @@
         </div>
 
         <p class="text-[8px] text-gray-600 mt-12 text-center uppercase tracking-widest leading-relaxed">
-            André Tech Solutions • LGPD Compliance • Google Sheets DB<br>
-            Acesso Privado e Criptografado via HTTPS
+            André Tech Solutions • LGPD Compliance • Google Sheets DB
         </p>
     </div>
 
@@ -112,8 +111,10 @@
         let autoSaveTimer;
         let isSyncing = false; 
 
+        // Inicia com o mês atual
         monthSelect.value = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"][new Date().getMonth()];
 
+        // Registro do Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => { 
                 navigator.serviceWorker.register('./sw.js').catch(() => {}); 
@@ -121,11 +122,14 @@
         }
 
         async function fetchData() {
-            isSyncing = true; 
+            isSyncing = true; // TRAVA: Bloqueia qualquer salvamento durante o download
             loader.style.display = "flex";
             try {
-                // Forçamos o navegador a não usar cache para ler dados reais do Sheets
-                const res = await fetch(`${GAS_URL}?month=${monthSelect.value}&t=${Date.now()}`, { cache: "no-store" });
+                // cache: 'no-cache' força a rede, ignorando o lixo do Service Worker
+                const res = await fetch(`${GAS_URL}?month=${monthSelect.value}&t=${Date.now()}`, {
+                    method: 'GET',
+                    cache: 'no-cache'
+                });
                 const data = await res.json();
                 
                 list.innerHTML = '';
@@ -145,7 +149,7 @@
                 saveStatus.style.opacity = "1";
             } finally {
                 loader.style.display = "none";
-                // Delay para garantir que o DOM renderizou antes de permitir saves
+                // Delay de segurança para garantir que os inputs foram renderizados antes de liberar o save
                 setTimeout(() => { isSyncing = false; }, 1000);
             }
         }
@@ -182,7 +186,7 @@
 
         function planSave() {
             calculate();
-            if (isSyncing) return; 
+            if (isSyncing) return; // Não salva se o download de dados ainda estiver ocorrendo
 
             clearTimeout(autoSaveTimer);
             autoSaveTimer = setTimeout(sendToSheets, 2000);
@@ -216,8 +220,9 @@
                 if(d || v) items.push({ description: d, value: v, status: s });
             });
 
-            // Proteção: não envia se a lista estiver vazia para não apagar o Sheets por erro
-            if (items.length === 0 && !isSyncing) return;
+            // PROTEÇÃO CRÍTICA: Se a lista estiver vazia e não estivermos sincronizando,
+            // abortamos para evitar que o GAS limpe a planilha por erro de leitura do front.
+            if (items.length === 0) return;
 
             saveStatus.style.opacity = "1";
             saveStatus.innerText = "SALVANDO...";
@@ -246,13 +251,13 @@
 
             loader.style.display = "flex";
             try {
-                const res = await fetch(`${GAS_URL}?month=${sourceMonth}&t=${Date.now()}`);
+                const res = await fetch(`${GAS_URL}?month=${sourceMonth}&t=${Date.now()}`, { cache: 'no-cache' });
                 const data = await res.json();
                 if (data && data.length > 0) {
                     data.forEach(item => {
                         list.appendChild(createRow(item.desc, item.val, 'PENDENTE'));
                     });
-                    planSave();
+                    planSave(); // Salva os novos dados importados no mês atual
                 }
             } catch (e) { alert("Erro ao importar"); }
             finally { 
